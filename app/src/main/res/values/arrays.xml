@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="rangos_precio">
+        <item>Todos los precios</item>
+        <item>Menos de S/ 200</item>
+        <item>S/ 200 - S/ 400</item>
+        <item>Más de S/ 400</item>
+    </string-array>
+</resources>

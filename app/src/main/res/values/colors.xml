@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core palette -->
+    <color name="color_primary">#9B3A2A</color>
+    <color name="color_on_primary">#FFFFFF</color>
+    <color name="color_secondary">#C85E4E</color>
+    <color name="color_on_secondary">#FFFFFF</color>
+
+    <!-- Neutrals / surfaces -->
+    <color name="color_background">#FAFAFA</color>
+    <color name="color_surface">#FFFFFF</color>
+    <color name="color_outline">#E7E7E7</color>
+    <color name="color_text">#4A4A4A</color>
+    <color name="color_text_muted">#666666</color>
+    <color name="color_success_bg">#EAF6EE</color>
+    <color name="color_success_fg">#2E7D32</color>
+    <color name="color_price">#FF5722</color>
+
+    <!-- Compat (por si algún recurso viejo aún se usa) -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+</resources>
