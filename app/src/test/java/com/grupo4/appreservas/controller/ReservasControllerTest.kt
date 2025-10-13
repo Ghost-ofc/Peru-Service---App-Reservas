@@ -1,9 +1,7 @@
 package com.grupo4.appreservas.controller
 
-import com.grupo4.appreservas.controller.ReservasController
-import com.grupo4.appreservas.modelos.Booking
-import com.grupo4.appreservas.modelos.EstadoBooking
-import com.grupo4.appreservas.modelos.TourSlot
+import com.grupo4.appreservas.modelos.Reserva
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.ReservasService
 import io.mockk.*
@@ -88,7 +86,7 @@ class ReservasControllerTest {
         val userId = "user_123"
         val tourSlotId = "dest_001_2025-10-14"
         val pax = 2
-        val bookingMock = Booking(
+        val reservaMock = Reserva(
             id = "BK12345678",
             userId = userId,
             destinoId = "dest_001",
@@ -96,9 +94,9 @@ class ReservasControllerTest {
             horaInicio = "08:00",
             numPersonas = pax,
             precioTotal = 900.0,
-            estado = EstadoBooking.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE_PAGO
         )
-        every { reservasService.crear(any(), any(), any(), any(), any(), any()) } returns bookingMock
+        every { reservasService.crear(any(), any(), any(), any(), any(), any()) } returns reservaMock
 
         // Act
         val resultado = reservasController.crearReservaCmd(userId, tourSlotId, pax)

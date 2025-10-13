@@ -12,7 +12,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.repository.ReservasRepository
-import com.grupo4.appreservas.modelos.Voucher
+import com.grupo4.appreservas.modelos.Recibo
 import com.grupo4.appreservas.service.QRService
 import com.grupo4.appreservas.service.ReciboService
 import java.text.SimpleDateFormat
@@ -100,22 +100,22 @@ class ReciboActivity : AppCompatActivity() {
         }
     }
 
-    private fun mostrarVoucher(voucher: Voucher) {
-        txtCodigoConfirmacion.text = voucher.codigoConfirmacion
-        txtDestinoNombre.text = voucher.destinoNombre
+    private fun mostrarVoucher(recibo: Recibo) {
+        txtCodigoConfirmacion.text = recibo.codigoConfirmacion
+        txtDestinoNombre.text = recibo.destinoNombre
 
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        txtFecha.text = dateFormat.format(voucher.fecha)
+        txtFecha.text = dateFormat.format(recibo.fecha)
 
         // Asumiendo que el voucher tiene horaInicio
         //txtHora.text = voucher.horaInicio ?: "08:00"
 
-        txtNumPersonas.text = "${voucher.numPersonas} persona${if (voucher.numPersonas > 1) "s" else ""}"
-        txtMontoTotal.text = "S/ ${voucher.montoTotal.toInt()}"
-        txtMetodoPago.text = voucher.metodoPago
+        txtNumPersonas.text = "${recibo.numPersonas} persona${if (recibo.numPersonas > 1) "s" else ""}"
+        txtMontoTotal.text = "S/ ${recibo.montoTotal.toInt()}"
+        txtMetodoPago.text = recibo.metodoPago
 
         // Generar y mostrar QR
-        generarQR(voucher.codigoConfirmacion)
+        generarQR(recibo.codigoConfirmacion)
     }
 
     private fun generarQR(codigo: String) {

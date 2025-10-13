@@ -2,9 +2,9 @@ package com.grupo4.appreservas.integracion
 
 import com.grupo4.appreservas.controller.CatalogoController
 import com.grupo4.appreservas.controller.ReservasController
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.modelos.TourSlot
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
@@ -69,7 +69,7 @@ class IntegracionCatalogoReservaTest {
         every { reservasRepository.findTourSlot(tourSlotId) } returns tourSlot
         every { reservasRepository.saveTourSlot(any()) } just Runs
         every { reservasRepository.save(any()) } answers {
-            firstArg<Booking>().copy(id = "BK12345678")
+            firstArg<Reserva>().copy(id = "BK12345678")
         }
 
         // Act
@@ -91,6 +91,6 @@ class IntegracionCatalogoReservaTest {
         assertEquals(15, disponibilidad["cuposDisponibles"])
         assertTrue(seatsLocked)
         assertNotNull(booking)
-        assertEquals(EstadoBooking.PENDIENTE_PAGO, booking?.estado)
+        assertEquals(EstadoReserva.PENDIENTE_PAGO, booking?.estado)
     }
 }

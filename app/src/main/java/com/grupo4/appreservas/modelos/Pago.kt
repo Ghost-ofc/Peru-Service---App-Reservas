@@ -15,7 +15,7 @@ enum class MetodoPago {
     TARJETA
 }
 
-data class Payment(
+data class Pago(
     val id: String = "",
     val bookingId: String,
     val monto: Double,
@@ -26,7 +26,7 @@ data class Payment(
 
 )
 
-data class Voucher(
+data class Recibo(
     val bookingId: String,
     val codigoConfirmacion: String,
     val qrCode: String,

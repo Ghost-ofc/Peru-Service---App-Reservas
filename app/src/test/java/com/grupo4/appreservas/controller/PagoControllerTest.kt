@@ -1,13 +1,12 @@
 package com.grupo4.appreservas.controller
 
-import com.grupo4.appreservas.controller.PagoController
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.modelos.EstadoPago
 import com.grupo4.appreservas.modelos.MetodoPago
-import com.grupo4.appreservas.modelos.Payment
-import com.grupo4.appreservas.modelos.Voucher
+import com.grupo4.appreservas.modelos.Pago
+import com.grupo4.appreservas.modelos.Recibo
 import com.grupo4.appreservas.service.PagoService
 import com.grupo4.appreservas.service.ReciboService
 import com.grupo4.appreservas.service.ReservasService
@@ -26,7 +25,7 @@ class PagoControllerTest {
     private lateinit var reservasService: ReservasService
     private lateinit var reciboService: ReciboService
 
-    private val bookingMock = Booking(
+    private val reservaMock = Reserva(
         id = "BK12345678",
         userId = "user_123",
         destinoId = "dest_001",
@@ -39,7 +38,7 @@ class PagoControllerTest {
         horaInicio = "08:00",
         numPersonas = 2,
         precioTotal = 900.0,
-        estado = EstadoBooking.PENDIENTE_PAGO
+        estado = EstadoReserva.PENDIENTE_PAGO
     )
 
     @Before
@@ -64,7 +63,7 @@ class PagoControllerTest {
             "bookingId" to bookingId,
             "monto" to 900.0
         )
-        val paymentMock = Payment(
+        val paymentMock = Pago(
             id = "PAY12345678",
             bookingId = bookingId,
             monto = 900.0,
@@ -73,7 +72,7 @@ class PagoControllerTest {
             transaccionId = "TXN123456"
         )
 
-        every { reservasService.obtenerReserva(bookingId) } returns bookingMock
+        every { reservasService.obtenerReserva(bookingId) } returns reservaMock
         coEvery { pagoService.payYape(requestData) } returns paymentMock
 
         // Act
@@ -95,7 +94,7 @@ class PagoControllerTest {
             "bookingId" to bookingId,
             "monto" to 900.0
         )
-        val paymentMock = Payment(
+        val paymentMock = Pago(
             id = "PAY12345678",
             bookingId = bookingId,
             monto = 900.0,
@@ -104,7 +103,7 @@ class PagoControllerTest {
             transaccionId = "TXN123456"
         )
 
-        every { reservasService.obtenerReserva(bookingId) } returns bookingMock
+        every { reservasService.obtenerReserva(bookingId) } returns reservaMock
         coEvery { pagoService.payPlin(requestData) } returns paymentMock
 
         // Act
@@ -125,7 +124,7 @@ class PagoControllerTest {
             "bookingId" to bookingId,
             "monto" to 900.0
         )
-        val paymentMock = Payment(
+        val paymentMock = Pago(
             id = "PAY12345678",
             bookingId = bookingId,
             monto = 900.0,
@@ -134,7 +133,7 @@ class PagoControllerTest {
             transaccionId = "TXN123456"
         )
 
-        every { reservasService.obtenerReserva(bookingId) } returns bookingMock
+        every { reservasService.obtenerReserva(bookingId) } returns reservaMock
         coEvery { pagoService.payCard(requestData) } returns paymentMock
 
         // Act
@@ -166,7 +165,7 @@ class PagoControllerTest {
         // Arrange
         val bookingId = "BK12345678"
         val metodo = MetodoPago.YAPE
-        val paymentMock = Payment(
+        val paymentMock = Pago(
             id = "PAY12345678",
             bookingId = bookingId,
             monto = 900.0,
@@ -174,13 +173,13 @@ class PagoControllerTest {
             estado = EstadoPago.APROBADO,
             transaccionId = "TXN123456"
         )
-        val bookingActualizado = bookingMock.copy(
-            estado = EstadoBooking.PAGADA,
+        val bookingActualizado = reservaMock.copy(
+            estado = EstadoReserva.PAGADA,
             codigoConfirmacion = "PS12345678",
             metodoPago = "YAPE"
         )
 
-        every { reservasService.obtenerReserva(bookingId) } returns bookingMock
+        every { reservasService.obtenerReserva(bookingId) } returns reservaMock
         coEvery { pagoService.payYape(any()) } returns paymentMock
         every { reservasService.confirmarPago(bookingId, "YAPE") } returns bookingActualizado
 
@@ -201,7 +200,7 @@ class PagoControllerTest {
         val bookingId = "BK12345678"
         val metodo = MetodoPago.YAPE
 
-        every { reservasService.obtenerReserva(bookingId) } returns bookingMock
+        every { reservasService.obtenerReserva(bookingId) } returns reservaMock
         coEvery { pagoService.payYape(any()) } throws RuntimeException("Fallo en pasarela de pago")
 
         // Act
@@ -217,7 +216,7 @@ class PagoControllerTest {
     fun `test generarComprobante genera voucher exitosamente`() {
         // Arrange
         val bookingId = "BK12345678"
-        val voucherMock = Voucher(
+        val reciboMock = Recibo(
             bookingId = bookingId,
             codigoConfirmacion = "PS12345678",
             qrCode = "QR_DATA_PS12345678",
@@ -229,14 +228,14 @@ class PagoControllerTest {
             horaInicio = "08:00"
         )
 
-        every { reciboService.emitir(bookingId) } returns voucherMock
+        every { reciboService.emitir(bookingId) } returns reciboMock
 
         // Act
         val resultado = pagoController.generarComprobante(bookingId)
 
         // Assert
         assertNotNull(resultado)
-        assertEquals(voucherMock, resultado?.get("voucher"))
+        assertEquals(reciboMock, resultado?.get("voucher"))
         assertEquals("QR_DATA_PS12345678", resultado?.get("qrCode"))
         verify(exactly = 1) { reciboService.emitir(bookingId) }
     }

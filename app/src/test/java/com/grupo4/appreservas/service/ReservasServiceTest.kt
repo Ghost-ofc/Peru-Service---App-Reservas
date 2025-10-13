@@ -1,8 +1,8 @@
 package com.grupo4.appreservas.service
 
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
 import io.mockk.*
@@ -52,7 +52,7 @@ class ReservasServiceTest {
         every { destinoRepository.getDetalle(destinoId) } returns destinoMock
         every { availabilityService.lockSeats(tourSlotId, pax) } returns true
         every { reservasRepository.save(any()) } answers {
-            firstArg<Booking>().copy(id = "BK12345678")
+            firstArg<Reserva>().copy(id = "BK12345678")
         }
 
         // Act
@@ -64,7 +64,7 @@ class ReservasServiceTest {
         assertEquals(destinoId, resultado?.destinoId)
         assertEquals(pax, resultado?.numPersonas)
         assertEquals(900.0, resultado!!.precioTotal, 0.01)
-        assertEquals(EstadoBooking.PENDIENTE_PAGO, resultado?.estado)
+        assertEquals(EstadoReserva.PENDIENTE_PAGO, resultado?.estado)
         verify(exactly = 1) { availabilityService.lockSeats(tourSlotId, pax) }
     }
 
@@ -115,7 +115,7 @@ class ReservasServiceTest {
         // Arrange
         val bookingId = "BK12345678"
         val metodoPago = "YAPE"
-        val bookingMock = Booking(
+        val reservaMock = Reserva(
             id = bookingId,
             userId = "user_123",
             destinoId = "dest_001",
@@ -123,10 +123,10 @@ class ReservasServiceTest {
             horaInicio = "08:00",
             numPersonas = 2,
             precioTotal = 900.0,
-            estado = EstadoBooking.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE_PAGO
         )
 
-        every { reservasRepository.find(bookingId) } returns bookingMock
+        every { reservasRepository.find(bookingId) } returns reservaMock
         every { reservasRepository.save(any()) } answers { firstArg() }
 
         // Act
@@ -134,7 +134,7 @@ class ReservasServiceTest {
 
         // Assert
         assertNotNull(resultado)
-        assertEquals(EstadoBooking.PAGADA, resultado?.estado)
+        assertEquals(EstadoReserva.PAGADA, resultado?.estado)
         assertEquals(metodoPago, resultado?.metodoPago)
         assertNotEquals("", resultado?.codigoConfirmacion)
         assertTrue(resultado?.codigoConfirmacion?.startsWith("PS") ?: false)
@@ -160,7 +160,7 @@ class ReservasServiceTest {
     fun `test obtenerReserva devuelve booking existente`() {
         // Arrange
         val bookingId = "BK12345678"
-        val bookingMock = Booking(
+        val reservaMock = Reserva(
             id = bookingId,
             userId = "user_123",
             destinoId = "dest_001",
@@ -168,10 +168,10 @@ class ReservasServiceTest {
             horaInicio = "08:00",
             numPersonas = 2,
             precioTotal = 900.0,
-            estado = EstadoBooking.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE_PAGO
         )
 
-        every { reservasRepository.find(bookingId) } returns bookingMock
+        every { reservasRepository.find(bookingId) } returns reservaMock
 
         // Act
         val resultado = reservasService.obtenerReserva(bookingId)

@@ -1,6 +1,6 @@
 package com.grupo4.appreservas.controller
 
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.ReservasService
 import java.text.SimpleDateFormat
@@ -21,7 +21,7 @@ class ReservasController(
         return availabilityService.verificarYBloquearCupos(tourSlotId, numPersonas)
     }
 
-    fun crearReservaCmd(userId: String, tourSlotId: String, pax: Int): Booking? {
+    fun crearReservaCmd(userId: String, tourSlotId: String, pax: Int): Reserva? {
         val parts = tourSlotId.split("_")
         if (parts.size < 3) return null
 

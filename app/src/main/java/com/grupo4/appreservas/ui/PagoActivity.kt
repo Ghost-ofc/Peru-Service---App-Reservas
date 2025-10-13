@@ -12,7 +12,7 @@ import com.grupo4.appreservas.controller.PagoController
 import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.PagoRepository
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.service.*
 import kotlinx.coroutines.launch
@@ -22,7 +22,7 @@ import java.util.*
 class PagoActivity : AppCompatActivity() {
 
     private lateinit var pagoController: PagoController
-    private lateinit var booking: Booking
+    private lateinit var reserva: Reserva
 
     private lateinit var txtDestinoNombre: TextView
     private lateinit var txtFecha: TextView
@@ -58,7 +58,7 @@ class PagoActivity : AppCompatActivity() {
     }
 
     private fun obtenerBooking() {
-        booking = intent.getSerializableExtra("BOOKING") as? Booking
+        reserva = intent.getSerializableExtra("BOOKING") as? Reserva
             ?: run {
                 Toast.makeText(this, "Error al cargar reserva", Toast.LENGTH_SHORT).show()
                 finish()
@@ -165,25 +165,25 @@ class PagoActivity : AppCompatActivity() {
     }
 
     private fun mostrarResumenReserva() {
-        booking.destino?.let { destino ->
+        reserva.destino?.let { destino ->
             txtDestinoNombre.text = destino.nombre
 
             // Precio unitario
             val precioUnitario = destino.precio
 
             // Cálculo
-            txtCalculoPrecio.text = "S/ $precioUnitario x ${booking.numPersonas} persona${if (booking.numPersonas > 1) "s" else ""}"
+            txtCalculoPrecio.text = "S/ $precioUnitario x ${reserva.numPersonas} persona${if (reserva.numPersonas > 1) "s" else ""}"
         }
 
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        txtFecha.text = dateFormat.format(booking.fecha)
-        txtHora.text = booking.horaInicio
-        txtNumPersonas.text = "${booking.numPersonas} persona${if (booking.numPersonas > 1) "s" else ""}"
+        txtFecha.text = dateFormat.format(reserva.fecha)
+        txtHora.text = reserva.horaInicio
+        txtNumPersonas.text = "${reserva.numPersonas} persona${if (reserva.numPersonas > 1) "s" else ""}"
 
         // Totales
-        txtSubtotal.text = "S/ ${booking.precioTotal.toInt()}"
-        txtMontoTotal.text = "S/ ${booking.precioTotal.toInt()}"
-        btnPagar.text = "Pagar S/ ${booking.precioTotal.toInt()}"
+        txtSubtotal.text = "S/ ${reserva.precioTotal.toInt()}"
+        txtMontoTotal.text = "S/ ${reserva.precioTotal.toInt()}"
+        btnPagar.text = "Pagar S/ ${reserva.precioTotal.toInt()}"
     }
 
     private fun procesarPago() {
@@ -197,7 +197,7 @@ class PagoActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val resultado = pagoController.process(booking.id, metodo)
+                val resultado = pagoController.process(reserva.id, metodo)
                 val success = resultado["success"] as? Boolean ?: false
 
                 if (success) {
@@ -240,7 +240,7 @@ class PagoActivity : AppCompatActivity() {
 
     private fun mostrarComprobante() {
         val intent = Intent(this, ReciboActivity::class.java)
-        intent.putExtra("BOOKING_ID", booking.id)
+        intent.putExtra("BOOKING_ID", reserva.id)
         startActivity(intent)
         finish()
     }

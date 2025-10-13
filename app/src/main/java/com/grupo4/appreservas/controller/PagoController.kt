@@ -1,7 +1,7 @@
 package com.grupo4.appreservas.controller
 
 import com.grupo4.appreservas.modelos.MetodoPago
-import com.grupo4.appreservas.modelos.Payment
+import com.grupo4.appreservas.modelos.Pago
 import com.grupo4.appreservas.service.ReservasService
 import com.grupo4.appreservas.service.PagoService
 import com.grupo4.appreservas.service.ReciboService
@@ -12,7 +12,7 @@ class PagoController(
     private val reciboService: ReciboService
 ) {
 
-    suspend fun pagar(bookingId: String, metodo: MetodoPago): Payment? {
+    suspend fun pagar(bookingId: String, metodo: MetodoPago): Pago? {
         val booking = reservasService.obtenerReserva(bookingId) ?: return null
 
         val requestData = mapOf(

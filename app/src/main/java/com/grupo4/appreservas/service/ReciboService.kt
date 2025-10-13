@@ -1,17 +1,17 @@
 package com.grupo4.appreservas.service
 
-import com.grupo4.appreservas.modelos.Voucher
+import com.grupo4.appreservas.modelos.Recibo
 import com.grupo4.appreservas.repository.ReservasRepository
 
 class ReciboService(
     private val reservasRepository: ReservasRepository
 ) {
 
-    fun emitir(bookingId: String): Voucher? {
+    fun emitir(bookingId: String): Recibo? {
         val booking = reservasRepository.find(bookingId) ?: return null
         val destino = booking.destino ?: return null
 
-        return Voucher(
+        return Recibo(
             bookingId = bookingId,
             codigoConfirmacion = booking.codigoConfirmacion,
             qrCode = generarQRData(booking.codigoConfirmacion),

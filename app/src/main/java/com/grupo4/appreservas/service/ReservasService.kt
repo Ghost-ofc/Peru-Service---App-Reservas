@@ -1,7 +1,7 @@
 package com.grupo4.appreservas.service
 
-import com.grupo4.appreservas.modelos.Booking
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.Reserva
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import java.util.Date
@@ -20,7 +20,7 @@ class ReservasService(
         fecha: Date,
         horaInicio: String,
         pax: Int
-    ): Booking? {
+    ): Reserva? {
         val destino = destinoRepository.getDetalle(destinoId) ?: return null
 
         // Verificar disponibilidad y bloquear asientos
@@ -30,7 +30,7 @@ class ReservasService(
 
         val precioTotal = destino.precio * pax
 
-        val booking = Booking(
+        val reserva = Reserva(
             id = "",
             userId = userId,
             destinoId = destinoId,
@@ -39,19 +39,19 @@ class ReservasService(
             horaInicio = horaInicio,
             numPersonas = pax,
             precioTotal = precioTotal,
-            estado = EstadoBooking.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE_PAGO
         )
 
-        return reservasRepository.save(booking)
+        return reservasRepository.save(reserva)
     }
 
-    fun confirmarPago(bookingId: String, payment: String): Booking? {
+    fun confirmarPago(bookingId: String, payment: String): Reserva? {
         val booking = reservasRepository.find(bookingId) ?: return null
 
         val codigoConfirmacion = "PS${UUID.randomUUID().toString().substring(0, 8).uppercase()}"
 
         val bookingActualizado = booking.copy(
-            estado = EstadoBooking.PAGADA,
+            estado = EstadoReserva.PAGADA,
             codigoConfirmacion = codigoConfirmacion,
             metodoPago = payment
         )
@@ -59,7 +59,7 @@ class ReservasService(
         return reservasRepository.save(bookingActualizado)
     }
 
-    fun obtenerReserva(bookingId: String): Booking? {
+    fun obtenerReserva(bookingId: String): Reserva? {
         return reservasRepository.find(bookingId)
     }
 }

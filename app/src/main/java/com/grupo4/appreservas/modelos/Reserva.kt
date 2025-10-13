@@ -3,14 +3,14 @@ package com.grupo4.appreservas.modelos
 import java.io.Serializable
 import java.util.Date
 
-enum class EstadoBooking {
+enum class EstadoReserva {
     PENDIENTE_PAGO,
     PAGADA,
     CONFIRMADA,
     CANCELADA
 }
 
-data class Booking(
+data class Reserva(
     val id: String = "",
     val userId: String,
     val destinoId: String,
@@ -19,7 +19,7 @@ data class Booking(
     val horaInicio: String,
     val numPersonas: Int,
     val precioTotal: Double,
-    val estado: EstadoBooking,
+    val estado: EstadoReserva,
     val codigoConfirmacion: String = "",
     val metodoPago: String = "",
     val fechaCreacion: Date = Date()

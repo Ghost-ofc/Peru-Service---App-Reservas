@@ -1,13 +1,13 @@
 package com.grupo4.appreservas.repository
 
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.TourSlot
 import java.util.Date
 import java.util.UUID
 
 class ReservasRepository private constructor() {
 
-    private val bookingsCache = mutableMapOf<String, Booking>()
+    private val bookingsCache = mutableMapOf<String, Reserva>()
     private val tourSlotsCache = mutableMapOf<String, TourSlot>()
 
     companion object {
@@ -21,25 +21,25 @@ class ReservasRepository private constructor() {
         }
     }
 
-    fun save(booking: Booking): Booking {
-        val nuevoBooking = if (booking.id.isEmpty()) {
-            booking.copy(id = "BK${UUID.randomUUID().toString().substring(0, 8).uppercase()}")
+    fun save(reserva: Reserva): Reserva {
+        val nuevoBooking = if (reserva.id.isEmpty()) {
+            reserva.copy(id = "BK${UUID.randomUUID().toString().substring(0, 8).uppercase()}")
         } else {
-            booking
+            reserva
         }
         bookingsCache[nuevoBooking.id] = nuevoBooking
         return nuevoBooking
     }
 
-    fun find(bookingId: String): Booking? {
+    fun find(bookingId: String): Reserva? {
         return bookingsCache[bookingId]
     }
 
-    fun findByBookingId(bookingId: String): Booking? {
+    fun findByBookingId(bookingId: String): Reserva? {
         return bookingsCache[bookingId]
     }
 
-    fun obtenerReservasUsuario(userId: String): List<Booking> {
+    fun obtenerReservasUsuario(userId: String): List<Reserva> {
         return bookingsCache.values.filter { it.userId == userId }
     }
 

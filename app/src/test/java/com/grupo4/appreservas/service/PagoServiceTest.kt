@@ -2,7 +2,7 @@ package com.grupo4.appreservas.service
 
 import com.grupo4.appreservas.modelos.EstadoPago
 import com.grupo4.appreservas.modelos.MetodoPago
-import com.grupo4.appreservas.modelos.Payment
+import com.grupo4.appreservas.modelos.Pago
 import com.grupo4.appreservas.repository.PagoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
 import io.mockk.*
@@ -38,7 +38,7 @@ class PagoServiceTest {
             "monto" to 900.0
         )
         every { pagoRepository.save(any()) } answers {
-            firstArg<Payment>().copy(
+            firstArg<Pago>().copy(
                 id = "PAY12345678",
                 transaccionId = "TXN123456"
             )
@@ -64,7 +64,7 @@ class PagoServiceTest {
             "monto" to 900.0
         )
         every { pagoRepository.save(any()) } answers {
-            firstArg<Payment>().copy(
+            firstArg<Pago>().copy(
                 id = "PAY12345678",
                 transaccionId = "TXN123456"
             )
@@ -86,7 +86,7 @@ class PagoServiceTest {
             "monto" to 900.0
         )
         every { pagoRepository.save(any()) } answers {
-            firstArg<Payment>().copy(
+            firstArg<Pago>().copy(
                 id = "PAY12345678",
                 transaccionId = "TXN123456"
             )
@@ -108,7 +108,7 @@ class PagoServiceTest {
             "monto" to 900.0
         )
         every { pagoRepository.save(any()) } answers {
-            firstArg<Payment>().copy(id = "PAY12345678")
+            firstArg<Pago>().copy(id = "PAY12345678")
         }
 
         val startTime = System.currentTimeMillis()

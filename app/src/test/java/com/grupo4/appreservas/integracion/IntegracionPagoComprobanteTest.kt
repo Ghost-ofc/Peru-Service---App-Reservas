@@ -1,12 +1,12 @@
 package com.grupo4.appreservas.integracion
 
 import com.grupo4.appreservas.controller.PagoController
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.modelos.MetodoPago
-import com.grupo4.appreservas.modelos.Payment
-import com.grupo4.appreservas.modelos.Voucher
+import com.grupo4.appreservas.modelos.Pago
+import com.grupo4.appreservas.modelos.Recibo
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.PagoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
@@ -55,7 +55,7 @@ class IntegracionPagoComprobanteTest {
     fun `test flujo completo de pago hasta generación de comprobante`() = runBlocking {
         // Arrange
         val bookingId = "BK12345678"
-        val booking = Booking(
+        val reserva = Reserva(
             id = bookingId,
             userId = "user_123",
             destinoId = "dest_001",
@@ -64,17 +64,17 @@ class IntegracionPagoComprobanteTest {
             horaInicio = "08:00",
             numPersonas = 2,
             precioTotal = 900.0,
-            estado = EstadoBooking.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE_PAGO
         )
-        val bookingPagado = booking.copy(
-            estado = EstadoBooking.PAGADA,
+        val bookingPagado = reserva.copy(
+            estado = EstadoReserva.PAGADA,
             codigoConfirmacion = "PS12345678",
             metodoPago = "YAPE"
         )
 
-        every { reservasRepository.find(bookingId) } returns booking andThen bookingPagado
+        every { reservasRepository.find(bookingId) } returns reserva andThen bookingPagado
         every { pagoRepository.save(any()) } answers {
-            firstArg<Payment>().copy(
+            firstArg<Pago>().copy(
                 id = "PAY12345678",
                 transaccionId = "TXN123456"
             )
@@ -94,8 +94,8 @@ class IntegracionPagoComprobanteTest {
         assertNotNull(comprobante?.get("voucher"))
         assertNotNull(comprobante?.get("qrCode"))
 
-        val voucher = comprobante?.get("voucher") as Voucher
-        assertEquals("PS12345678", voucher.codigoConfirmacion)
-        assertEquals(900.0, voucher.montoTotal, 0.01)
+        val recibo = comprobante?.get("voucher") as Recibo
+        assertEquals("PS12345678", recibo.codigoConfirmacion)
+        assertEquals(900.0, recibo.montoTotal, 0.01)
     }
 }

@@ -12,7 +12,7 @@ import com.grupo4.appreservas.R
 import com.grupo4.appreservas.controller.ReservasController
 import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.ReservasService
@@ -238,9 +238,9 @@ class ReservasActivity : AppCompatActivity() {
         }
     }
 
-    private fun irAPago(booking: Booking) {
+    private fun irAPago(reserva: Reserva) {
         val intent = Intent(this, PagoActivity::class.java)
-        intent.putExtra("BOOKING", booking)
+        intent.putExtra("BOOKING", reserva)
         startActivity(intent)
         finish()
     }

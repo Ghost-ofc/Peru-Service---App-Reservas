@@ -1,8 +1,8 @@
 package com.grupo4.appreservas.service
 
-import com.grupo4.appreservas.modelos.Booking
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.modelos.EstadoBooking
+import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.repository.ReservasRepository
 import io.mockk.*
 import org.junit.After
@@ -16,7 +16,7 @@ class ReciboServiceTest {
     private lateinit var reciboService: ReciboService
     private lateinit var reservasRepository: ReservasRepository
 
-    private val bookingMock = Booking(
+    private val reservaMock = Reserva(
         id = "BK12345678",
         userId = "user_123",
         destinoId = "dest_001",
@@ -29,7 +29,7 @@ class ReciboServiceTest {
         horaInicio = "08:00",
         numPersonas = 2,
         precioTotal = 900.0,
-        estado = EstadoBooking.PAGADA,
+        estado = EstadoReserva.PAGADA,
         codigoConfirmacion = "PS12345678",
         metodoPago = "YAPE"
     )
@@ -49,7 +49,7 @@ class ReciboServiceTest {
     fun `test emitir genera voucher correctamente`() {
         // Arrange
         val bookingId = "BK12345678"
-        every { reservasRepository.find(bookingId) } returns bookingMock
+        every { reservasRepository.find(bookingId) } returns reservaMock
 
         // Act
         val resultado = reciboService.emitir(bookingId)
@@ -83,7 +83,7 @@ class ReciboServiceTest {
     fun `test emitir devuelve null cuando booking no tiene destino`() {
         // Arrange
         val bookingId = "BK12345678"
-        val bookingSinDestino = bookingMock.copy(destino = null)
+        val bookingSinDestino = reservaMock.copy(destino = null)
         every { reservasRepository.find(bookingId) } returns bookingSinDestino
 
         // Act
@@ -97,7 +97,7 @@ class ReciboServiceTest {
     fun `test emitir genera QR con formato correcto`() {
         // Arrange
         val bookingId = "BK12345678"
-        every { reservasRepository.find(bookingId) } returns bookingMock
+        every { reservasRepository.find(bookingId) } returns reservaMock
 
         // Act
         val resultado = reciboService.emitir(bookingId)
