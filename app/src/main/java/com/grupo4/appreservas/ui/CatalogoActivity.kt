@@ -19,7 +19,7 @@ import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.service.AvailabilityService
-import com.grupo4.appreservas.service.DestinationService
+import com.grupo4.appreservas.service.DestinoService
 import com.grupo4.appreservas.R
 
 class CatalogoActivity : AppCompatActivity() {
@@ -50,11 +50,11 @@ class CatalogoActivity : AppCompatActivity() {
     private fun inicializarDependencias() {
         val destinoRepo = DestinoRepository.getInstance()
         val bookingRepo = ReservasRepository.getInstance()
-        val destinationService = DestinationService(destinoRepo)
+        val destinoService = DestinoService(destinoRepo)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
 
-        catalogoController = CatalogoController(destinationService, availabilityService)
-        filtrosController = FiltrosController(destinationService)
+        catalogoController = CatalogoController(destinoService, availabilityService)
+        filtrosController = FiltrosController(destinoService)
     }
 
     private fun inicializarVistas() {

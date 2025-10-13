@@ -30,24 +30,37 @@ class PagoController(
     }
 
     suspend fun process(bookingId: String, metodo: MetodoPago): Map<String, Any> {
-        val payment = pagar(bookingId, metodo)
+        val booking = reservasService.obtenerReserva(bookingId)
+        if (booking == null) {
+            return mapOf("success" to false, "error" to "Reserva no encontrada")
+        }
 
-        if (payment != null) {
-            // Confirmar el pago en el booking
+        return try {
+            val requestData = mapOf(
+                "bookingId" to booking.id,
+                "monto" to booking.precioTotal
+            )
+
+            val payment = when (metodo) {
+                MetodoPago.YAPE -> pagoService.payYape(requestData)
+                MetodoPago.PLIN -> pagoService.payPlin(requestData)
+                MetodoPago.TARJETA -> pagoService.payCard(requestData)
+            }
+
             val bookingActualizado = reservasService.confirmarPago(bookingId, metodo.name)
 
-            return mapOf(
+            mapOf(
                 "success" to true,
                 "paymentId" to payment.id,
                 "bookingId" to bookingId,
                 "estado" to payment.estado.name
             )
+        } catch (e: Exception) {
+            mapOf(
+                "success" to false,
+                "error" to "No se pudo procesar el pago"
+            )
         }
-
-        return mapOf(
-            "success" to false,
-            "error" to "No se pudo procesar el pago"
-        )
     }
 
     fun generarComprobante(bookingId: String): Map<String, Any>? {

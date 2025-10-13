@@ -3,7 +3,7 @@ package com.grupo4.appreservas.service
 import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.repository.DestinoRepository
 
-class DestinationService(
+class DestinoService(
     private val destinoRepository: DestinoRepository
 ) {
 

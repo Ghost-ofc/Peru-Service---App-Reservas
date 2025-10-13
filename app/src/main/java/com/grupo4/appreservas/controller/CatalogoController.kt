@@ -2,20 +2,20 @@ package com.grupo4.appreservas.controller
 
 import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.service.AvailabilityService
-import com.grupo4.appreservas.service.DestinationService
+import com.grupo4.appreservas.service.DestinoService
 
 class CatalogoController(
-    private val destinationService: DestinationService,
+    private val destinoService: DestinoService,
     private val availabilityService: AvailabilityService
 ) {
 
     fun solicitarDestinos(): List<Destino> {
-        return destinationService.listarDestinos()
+        return destinoService.listarDestinos()
     }
 
     fun solicitarDisponibilidad(destinoId: String, fecha: String): Map<String, Any>? {
         // Implementación simplificada
-        val destino = destinationService.obtenerDetalle(destinoId) ?: return null
+        val destino = destinoService.obtenerDetalle(destinoId) ?: return null
 
         return mapOf(
             "destinoId" to destinoId,
@@ -25,6 +25,6 @@ class CatalogoController(
     }
 
     fun aplicarFiltros(criterios: Map<String, Any>): List<Destino> {
-        return destinationService.filtrarDestinos(criterios)
+        return destinoService.filtrarDestinos(criterios)
     }
 }
