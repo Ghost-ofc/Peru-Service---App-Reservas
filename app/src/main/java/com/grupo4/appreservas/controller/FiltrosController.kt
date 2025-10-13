@@ -3,7 +3,7 @@ package com.grupo4.appreservas.controller
 import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.service.DestinationService
 
-class FilterController(
+class FiltrosController(
     private val destinationService: DestinationService
 ) {
 

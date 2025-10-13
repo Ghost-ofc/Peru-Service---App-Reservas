@@ -1,14 +1,14 @@
 package com.grupo4.appreservas.service
 
 import com.grupo4.appreservas.modelos.Voucher
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.repository.ReservasRepository
 
-class VoucherService(
-    private val bookingRepository: BookingRepository
+class ReciboService(
+    private val reservasRepository: ReservasRepository
 ) {
 
     fun emitir(bookingId: String): Voucher? {
-        val booking = bookingRepository.find(bookingId) ?: return null
+        val booking = reservasRepository.find(bookingId) ?: return null
         val destino = booking.destino ?: return null
 
         return Voucher(

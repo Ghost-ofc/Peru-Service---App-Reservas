@@ -2,18 +2,18 @@ package com.grupo4.appreservas.controller
 
 import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.modelos.Payment
-import com.grupo4.appreservas.service.BookingService
-import com.grupo4.appreservas.service.PaymentService
-import com.grupo4.appreservas.service.VoucherService
+import com.grupo4.appreservas.service.ReservasService
+import com.grupo4.appreservas.service.PagoService
+import com.grupo4.appreservas.service.ReciboService
 
-class PaymentController(
-    private val paymentService: PaymentService,
-    private val bookingService: BookingService,
-    private val voucherService: VoucherService
+class PagoController(
+    private val pagoService: PagoService,
+    private val reservasService: ReservasService,
+    private val reciboService: ReciboService
 ) {
 
     suspend fun pagar(bookingId: String, metodo: MetodoPago): Payment? {
-        val booking = bookingService.obtenerReserva(bookingId) ?: return null
+        val booking = reservasService.obtenerReserva(bookingId) ?: return null
 
         val requestData = mapOf(
             "bookingId" to bookingId,
@@ -21,9 +21,9 @@ class PaymentController(
         )
 
         val payment = when (metodo) {
-            MetodoPago.YAPE -> paymentService.payYape(requestData)
-            MetodoPago.PLIN -> paymentService.payPlin(requestData)
-            MetodoPago.TARJETA -> paymentService.payCard(requestData)
+            MetodoPago.YAPE -> pagoService.payYape(requestData)
+            MetodoPago.PLIN -> pagoService.payPlin(requestData)
+            MetodoPago.TARJETA -> pagoService.payCard(requestData)
         }
 
         return payment
@@ -34,7 +34,7 @@ class PaymentController(
 
         if (payment != null) {
             // Confirmar el pago en el booking
-            val bookingActualizado = bookingService.confirmarPago(bookingId, metodo.name)
+            val bookingActualizado = reservasService.confirmarPago(bookingId, metodo.name)
 
             return mapOf(
                 "success" to true,
@@ -51,7 +51,7 @@ class PaymentController(
     }
 
     fun generarComprobante(bookingId: String): Map<String, Any>? {
-        val voucher = voucherService.emitir(bookingId) ?: return null
+        val voucher = reciboService.emitir(bookingId) ?: return null
 
         return mapOf(
             "voucher" to voucher,

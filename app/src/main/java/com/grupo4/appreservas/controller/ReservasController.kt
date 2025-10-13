@@ -2,14 +2,14 @@ package com.grupo4.appreservas.controller
 
 import com.grupo4.appreservas.modelos.Booking
 import com.grupo4.appreservas.service.AvailabilityService
-import com.grupo4.appreservas.service.BookingService
+import com.grupo4.appreservas.service.ReservasService
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 
-class ReservationController(
-    private val bookingService: BookingService,
+class ReservasController(
+    private val reservasService: ReservasService,
     private val availabilityService: AvailabilityService
 ) {
 
@@ -32,7 +32,7 @@ class ReservationController(
             val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val fecha = dateFormat.parse(fechaStr) ?: Date()
 
-            return bookingService.crear(
+            return reservasService.crear(
                 userId = userId,
                 destinoId = destinoId,
                 tourSlotId = tourSlotId,

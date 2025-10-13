@@ -11,16 +11,16 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.modelos.Voucher
 import com.grupo4.appreservas.service.QRService
-import com.grupo4.appreservas.service.VoucherService
+import com.grupo4.appreservas.service.ReciboService
 import java.text.SimpleDateFormat
 import java.util.*
 
-class VoucherActivity : AppCompatActivity() {
+class ReciboActivity : AppCompatActivity() {
 
-    private lateinit var voucherService: VoucherService
+    private lateinit var reciboService: ReciboService
     private lateinit var qrService: QRService
 
     private lateinit var btnBack: ImageView
@@ -56,8 +56,8 @@ class VoucherActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val bookingRepo = BookingRepository.getInstance()
-        voucherService = VoucherService(bookingRepo)
+        val bookingRepo = ReservasRepository.getInstance()
+        reciboService = ReciboService(bookingRepo)
         qrService = QRService()
     }
 
@@ -85,7 +85,7 @@ class VoucherActivity : AppCompatActivity() {
 
     private fun cargarVoucher() {
         try {
-            val voucher = voucherService.emitir(bookingId)
+            val voucher = reciboService.emitir(bookingId)
 
             if (voucher != null) {
                 mostrarVoucher(voucher)

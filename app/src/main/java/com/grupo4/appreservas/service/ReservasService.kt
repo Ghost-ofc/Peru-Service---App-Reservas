@@ -2,13 +2,13 @@ package com.grupo4.appreservas.service
 
 import com.grupo4.appreservas.modelos.Booking
 import com.grupo4.appreservas.modelos.EstadoBooking
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import java.util.Date
 import java.util.UUID
 
-class BookingService(
-    private val bookingRepository: BookingRepository,
+class ReservasService(
+    private val reservasRepository: ReservasRepository,
     private val destinoRepository: DestinoRepository,
     private val availabilityService: AvailabilityService
 ) {
@@ -42,11 +42,11 @@ class BookingService(
             estado = EstadoBooking.PENDIENTE_PAGO
         )
 
-        return bookingRepository.save(booking)
+        return reservasRepository.save(booking)
     }
 
     fun confirmarPago(bookingId: String, payment: String): Booking? {
-        val booking = bookingRepository.find(bookingId) ?: return null
+        val booking = reservasRepository.find(bookingId) ?: return null
 
         val codigoConfirmacion = "PS${UUID.randomUUID().toString().substring(0, 8).uppercase()}"
 
@@ -56,10 +56,10 @@ class BookingService(
             metodoPago = payment
         )
 
-        return bookingRepository.save(bookingActualizado)
+        return reservasRepository.save(bookingActualizado)
     }
 
     fun obtenerReserva(bookingId: String): Booking? {
-        return bookingRepository.find(bookingId)
+        return reservasRepository.find(bookingId)
     }
 }

@@ -9,19 +9,19 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.card.MaterialCardView
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.controller.ReservationController
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.controller.ReservasController
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.modelos.Booking
 import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.service.AvailabilityService
-import com.grupo4.appreservas.service.BookingService
+import com.grupo4.appreservas.service.ReservasService
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ReservationActivity : AppCompatActivity() {
+class ReservasActivity : AppCompatActivity() {
 
-    private lateinit var reservationController: ReservationController
+    private lateinit var reservasController: ReservasController
     private lateinit var destino: Destino
 
     private lateinit var topAppBar: MaterialToolbar
@@ -64,11 +64,11 @@ class ReservationActivity : AppCompatActivity() {
 
     private fun inicializarDependencias() {
         val destinoRepo = DestinoRepository.getInstance()
-        val bookingRepo = BookingRepository.getInstance()
+        val bookingRepo = ReservasRepository.getInstance()
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
-        val bookingService = BookingService(bookingRepo, destinoRepo, availabilityService)
+        val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService)
 
-        reservationController = ReservationController(bookingService, availabilityService)
+        reservasController = ReservasController(reservasService, availabilityService)
     }
 
     private fun inicializarVistas() {
@@ -183,7 +183,7 @@ class ReservationActivity : AppCompatActivity() {
         if (tourSlotId.isEmpty()) return
 
         try {
-            val disponibilidad = reservationController.consultarDisponibilidad(tourSlotId)
+            val disponibilidad = reservasController.consultarDisponibilidad(tourSlotId)
             val cuposDisp = disponibilidad["cuposDisponibles"] as? Int ?: 0
 
             txtCuposDisponibles.text = "$cuposDisp cupos disponibles"
@@ -212,10 +212,10 @@ class ReservationActivity : AppCompatActivity() {
         btnConfirmarReserva.isEnabled = false
 
         try {
-            val seatsLocked = reservationController.lockSeats(tourSlotId, numPersonasSeleccionadas)
+            val seatsLocked = reservasController.lockSeats(tourSlotId, numPersonasSeleccionadas)
 
             if (seatsLocked) {
-                val booking = reservationController.crearReservaCmd(
+                val booking = reservasController.crearReservaCmd(
                     userId = "user_123",
                     tourSlotId = tourSlotId,
                     pax = numPersonasSeleccionadas
@@ -239,7 +239,7 @@ class ReservationActivity : AppCompatActivity() {
     }
 
     private fun irAPago(booking: Booking) {
-        val intent = Intent(this, PaymentActivity::class.java)
+        val intent = Intent(this, PagoActivity::class.java)
         intent.putExtra("BOOKING", booking)
         startActivity(intent)
         finish()

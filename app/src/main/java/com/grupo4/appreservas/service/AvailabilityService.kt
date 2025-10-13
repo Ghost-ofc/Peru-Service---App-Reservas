@@ -1,7 +1,7 @@
 package com.grupo4.appreservas.service
 
 import com.grupo4.appreservas.modelos.TourSlot
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -9,7 +9,7 @@ import java.util.Locale
 
 class AvailabilityService(
     private val destinoRepository: DestinoRepository,
-    private val bookingRepository: BookingRepository
+    private val reservasRepository: ReservasRepository
 ) {
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -48,11 +48,11 @@ class AvailabilityService(
         }
 
         // Buscar o crear el TourSlot
-        var tourSlot = bookingRepository.findTourSlot(tourSlotId)
+        var tourSlot = reservasRepository.findTourSlot(tourSlotId)
 
         if (tourSlot == null) {
             // Si no existe, crearlo con capacidad máxima del destino
-            tourSlot = bookingRepository.crearTourSlotSiNoExiste(
+            tourSlot = reservasRepository.crearTourSlotSiNoExiste(
                 tourSlotId = tourSlotId,
                 fecha = fecha,
                 capacidad = destino.maxPersonas
@@ -71,12 +71,12 @@ class AvailabilityService(
     }
 
     fun cupos(tourSlotId: String, fecha: Date): Int {
-        val slot = bookingRepository.findTourSlot(tourSlotId)
+        val slot = reservasRepository.findTourSlot(tourSlotId)
         return slot?.cuposDisponibles() ?: 0
     }
 
     fun verificarYBloquearCupos(tourSlotId: String, numPersonas: Int): Boolean {
-        val tourSlot = bookingRepository.findTourSlot(tourSlotId) ?: return false
+        val tourSlot = reservasRepository.findTourSlot(tourSlotId) ?: return false
 
         val cuposDisponibles = tourSlot.capacidad - tourSlot.ocupados
 
@@ -85,7 +85,7 @@ class AvailabilityService(
             val slotActualizado = tourSlot.copy(
                 ocupados = tourSlot.ocupados + numPersonas
             )
-            bookingRepository.saveTourSlot(slotActualizado)
+            reservasRepository.saveTourSlot(slotActualizado)
             return true
         }
 
@@ -97,16 +97,16 @@ class AvailabilityService(
     }
 
     fun liberarCupos(tourSlotId: String, numPersonas: Int) {
-        val tourSlot = bookingRepository.findTourSlot(tourSlotId) ?: return
+        val tourSlot = reservasRepository.findTourSlot(tourSlotId) ?: return
 
         val slotActualizado = tourSlot.copy(
             ocupados = maxOf(0, tourSlot.ocupados - numPersonas)
         )
-        bookingRepository.saveTourSlot(slotActualizado)
+        reservasRepository.saveTourSlot(slotActualizado)
     }
 
     fun find(tourSlotId: String): TourSlot? {
-        return bookingRepository.findTourSlot(tourSlotId)
+        return reservasRepository.findTourSlot(tourSlotId)
     }
 
     fun bulkCupos(listaIds: List<String>, fechaOpcional: Date?): Map<String, Int> {
@@ -129,6 +129,6 @@ class AvailabilityService(
 
     fun crearSlotSiNoExiste(destinoId: String, fecha: Date, capacidad: Int): TourSlot {
         val tourSlotId = generarTourSlotId(destinoId, fecha)
-        return bookingRepository.crearTourSlotSiNoExiste(tourSlotId, fecha, capacidad)
+        return reservasRepository.crearTourSlotSiNoExiste(tourSlotId, fecha, capacidad)
     }
 }

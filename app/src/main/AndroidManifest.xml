@@ -15,7 +15,7 @@
         android:forceDarkAllowed="false"
         tools:targetApi="31">
         <activity
-            android:name=".ui.CatalogActivity"
+            android:name=".ui.CatalogoActivity"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>
@@ -25,28 +25,28 @@
         </activity>
 
         <activity
-            android:name=".ui.DestinationDetailActivity"
+            android:name=".ui.DetalleDestinoActivity"
             android:launchMode="singleTop"
-            android:parentActivityName=".ui.CatalogActivity" />
+            android:parentActivityName=".ui.CatalogoActivity" />
 
         <activity
-            android:name=".ui.FilterActivity"
-            android:parentActivityName=".ui.CatalogActivity" />
+            android:name=".ui.FiltrosActivity"
+            android:parentActivityName=".ui.CatalogoActivity" />
 
         <!-- HU-002: Reserva -->
         <activity
-            android:name=".ui.ReservationActivity"
-            android:parentActivityName=".ui.CatalogActivity" />
+            android:name=".ui.ReservasActivity"
+            android:parentActivityName=".ui.CatalogoActivity" />
 
         <!-- HU-003: Pago y voucher -->
         <activity
-            android:name=".ui.PaymentActivity"
-            android:parentActivityName=".ui.ReservationActivity" />
+            android:name=".ui.PagoActivity"
+            android:parentActivityName=".ui.ReservasActivity" />
 
         <activity
-            android:name=".ui.VoucherActivity"
+            android:name=".ui.ReciboActivity"
             android:launchMode="singleTask"
-            android:parentActivityName=".ui.CatalogActivity" />
+            android:parentActivityName=".ui.CatalogoActivity" />
 
     </application>
 

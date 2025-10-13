@@ -8,10 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.card.MaterialCardView
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.controller.PaymentController
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.controller.PagoController
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
-import com.grupo4.appreservas.repository.PaymentRepository
+import com.grupo4.appreservas.repository.PagoRepository
 import com.grupo4.appreservas.modelos.Booking
 import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.service.*
@@ -19,9 +19,9 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-class PaymentActivity : AppCompatActivity() {
+class PagoActivity : AppCompatActivity() {
 
-    private lateinit var paymentController: PaymentController
+    private lateinit var pagoController: PagoController
     private lateinit var booking: Booking
 
     private lateinit var txtDestinoNombre: TextView
@@ -67,16 +67,16 @@ class PaymentActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val paymentRepo = PaymentRepository.getInstance()
-        val bookingRepo = BookingRepository.getInstance()
+        val paymentRepo = PagoRepository.getInstance()
+        val bookingRepo = ReservasRepository.getInstance()
         val destinoRepo = DestinoRepository.getInstance()
 
-        val paymentService = PaymentService(paymentRepo, bookingRepo)
+        val pagoService = PagoService(paymentRepo, bookingRepo)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
-        val bookingService = BookingService(bookingRepo, destinoRepo, availabilityService)
-        val voucherService = VoucherService(bookingRepo)
+        val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService)
+        val reciboService = ReciboService(bookingRepo)
 
-        paymentController = PaymentController(paymentService, bookingService, voucherService)
+        pagoController = PagoController(pagoService, reservasService, reciboService)
     }
 
     private fun inicializarVistas() {
@@ -197,12 +197,12 @@ class PaymentActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val resultado = paymentController.process(booking.id, metodo)
+                val resultado = pagoController.process(booking.id, metodo)
                 val success = resultado["success"] as? Boolean ?: false
 
                 if (success) {
                     Toast.makeText(
-                        this@PaymentActivity,
+                        this@PagoActivity,
                         "¡Pago procesado exitosamente!",
                         Toast.LENGTH_SHORT
                     ).show()
@@ -210,7 +210,7 @@ class PaymentActivity : AppCompatActivity() {
                     mostrarComprobante()
                 } else {
                     Toast.makeText(
-                        this@PaymentActivity,
+                        this@PagoActivity,
                         "Pago rechazado, intente nuevamente",
                         Toast.LENGTH_LONG
                     ).show()
@@ -224,7 +224,7 @@ class PaymentActivity : AppCompatActivity() {
 
             } catch (e: Exception) {
                 Toast.makeText(
-                    this@PaymentActivity,
+                    this@PagoActivity,
                     "Error al procesar pago: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
@@ -239,7 +239,7 @@ class PaymentActivity : AppCompatActivity() {
     }
 
     private fun mostrarComprobante() {
-        val intent = Intent(this, VoucherActivity::class.java)
+        val intent = Intent(this, ReciboActivity::class.java)
         intent.putExtra("BOOKING_ID", booking.id)
         startActivity(intent)
         finish()

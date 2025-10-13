@@ -8,7 +8,7 @@ import android.widget.Spinner
 import androidx.appcompat.app.AppCompatActivity
 import com.grupo4.appreservas.R
 
-class FilterActivity : AppCompatActivity() {
+class FiltrosActivity : AppCompatActivity() {
 
     private lateinit var spinnerRangoPrecio: Spinner
     private lateinit var radioGroupDisponibilidad: RadioGroup

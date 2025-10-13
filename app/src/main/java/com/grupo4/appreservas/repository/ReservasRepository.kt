@@ -5,18 +5,18 @@ import com.grupo4.appreservas.modelos.TourSlot
 import java.util.Date
 import java.util.UUID
 
-class BookingRepository private constructor() {
+class ReservasRepository private constructor() {
 
     private val bookingsCache = mutableMapOf<String, Booking>()
     private val tourSlotsCache = mutableMapOf<String, TourSlot>()
 
     companion object {
         @Volatile
-        private var instance: BookingRepository? = null
+        private var instance: ReservasRepository? = null
 
-        fun getInstance(): BookingRepository {
+        fun getInstance(): ReservasRepository {
             return instance ?: synchronized(this) {
-                instance ?: BookingRepository().also { instance = it }
+                instance ?: ReservasRepository().also { instance = it }
             }
         }
     }

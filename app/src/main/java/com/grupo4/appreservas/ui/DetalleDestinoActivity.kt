@@ -12,7 +12,7 @@ import com.grupo4.appreservas.R
 import com.bumptech.glide.Glide
 import com.google.android.material.appbar.MaterialToolbar
 
-class DestinationDetailActivity : AppCompatActivity() {
+class DetalleDestinoActivity : AppCompatActivity() {
 
     private lateinit var destino: Destino
 
@@ -100,7 +100,7 @@ class DestinationDetailActivity : AppCompatActivity() {
     }
 
     private fun abrirReserva() {
-        val intent = Intent(this, ReservationActivity::class.java)
+        val intent = Intent(this, ReservasActivity::class.java)
         intent.putExtra("DESTINO", destino)
         startActivity(intent)
     }

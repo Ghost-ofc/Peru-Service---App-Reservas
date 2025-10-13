@@ -3,13 +3,13 @@ package com.grupo4.appreservas.service
 import com.grupo4.appreservas.modelos.EstadoPago
 import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.modelos.Payment
-import com.grupo4.appreservas.repository.BookingRepository
-import com.grupo4.appreservas.repository.PaymentRepository
+import com.grupo4.appreservas.repository.ReservasRepository
+import com.grupo4.appreservas.repository.PagoRepository
 import kotlinx.coroutines.delay
 
-class PaymentService(
-    private val paymentRepository: PaymentRepository,
-    private val bookingRepository: BookingRepository
+class PagoService(
+    private val pagoRepository: PagoRepository,
+    private val reservasRepository: ReservasRepository
 ) {
 
     suspend fun payYape(req: Map<String, Any>): Payment {
@@ -26,7 +26,7 @@ class PaymentService(
             estado = EstadoPago.APROBADO
         )
 
-        return paymentRepository.save(payment)
+        return pagoRepository.save(payment)
     }
 
     suspend fun payPlin(req: Map<String, Any>): Payment {
@@ -42,7 +42,7 @@ class PaymentService(
             estado = EstadoPago.APROBADO
         )
 
-        return paymentRepository.save(payment)
+        return pagoRepository.save(payment)
     }
 
     suspend fun payCard(req: Map<String, Any>): Payment {
@@ -58,6 +58,6 @@ class PaymentService(
             estado = EstadoPago.APROBADO
         )
 
-        return paymentRepository.save(payment)
+        return pagoRepository.save(payment)
     }
 }

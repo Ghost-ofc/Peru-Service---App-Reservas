@@ -12,21 +12,20 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.grupo4.appreservas.adapter.DestinosAdapter
-import com.grupo4.appreservas.controller.CatalogController
-import com.grupo4.appreservas.controller.FilterController
+import com.grupo4.appreservas.controller.CatalogoController
+import com.grupo4.appreservas.controller.FiltrosController
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.repository.BookingRepository
+import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.DestinationService
 import com.grupo4.appreservas.R
 
-class CatalogActivity : AppCompatActivity() {
+class CatalogoActivity : AppCompatActivity() {
 
-    private lateinit var catalogController: CatalogController
-    private lateinit var filterController: FilterController
+    private lateinit var catalogoController: CatalogoController
+    private lateinit var filtrosController: FiltrosController
 
     private lateinit var recyclerDestinos: RecyclerView
     private lateinit var chipGroupCategorias: ChipGroup
@@ -50,12 +49,12 @@ class CatalogActivity : AppCompatActivity() {
 
     private fun inicializarDependencias() {
         val destinoRepo = DestinoRepository.getInstance()
-        val bookingRepo = BookingRepository.getInstance()
+        val bookingRepo = ReservasRepository.getInstance()
         val destinationService = DestinationService(destinoRepo)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
 
-        catalogController = CatalogController(destinationService, availabilityService)
-        filterController = FilterController(destinationService)
+        catalogoController = CatalogoController(destinationService, availabilityService)
+        filtrosController = FiltrosController(destinationService)
     }
 
     private fun inicializarVistas() {
@@ -75,7 +74,7 @@ class CatalogActivity : AppCompatActivity() {
         }
 
         recyclerDestinos.apply {
-            layoutManager = LinearLayoutManager(this@CatalogActivity)
+            layoutManager = LinearLayoutManager(this@CatalogoActivity)
             adapter = destinosAdapter
         }
     }
@@ -107,7 +106,7 @@ class CatalogActivity : AppCompatActivity() {
 
     private fun cargarDestinos() {
         try {
-            destinosList = catalogController.solicitarDestinos()
+            destinosList = catalogoController.solicitarDestinos()
             destinosFiltrados = destinosList
             destinosAdapter.actualizarLista(destinosList)
             configurarChipsCategorias()
@@ -173,17 +172,17 @@ class CatalogActivity : AppCompatActivity() {
     private fun filtrarPorCategoria(categoria: String) {
         editBuscar.text.clear()
         val criterios = mapOf("categoria" to categoria)
-        destinosFiltrados = filterController.filtrarDestinos(criterios)
+        destinosFiltrados = filtrosController.filtrarDestinos(criterios)
         destinosAdapter.actualizarLista(destinosFiltrados)
     }
 
     private fun abrirFiltros() {
-        val intent = Intent(this, FilterActivity::class.java)
+        val intent = Intent(this, FiltrosActivity::class.java)
         startActivityForResult(intent, REQUEST_FILTROS)
     }
 
     private fun abrirDetalle(destino: Destino) {
-        val intent = Intent(this, DestinationDetailActivity::class.java)
+        val intent = Intent(this, DetalleDestinoActivity::class.java)
         intent.putExtra("DESTINO", destino)
         startActivity(intent)
     }
@@ -201,7 +200,7 @@ class CatalogActivity : AppCompatActivity() {
             if (precioMin > 0) criterios["precioMin"] = precioMin
             if (precioMax < Double.MAX_VALUE) criterios["precioMax"] = precioMax
 
-            destinosFiltrados = filterController.filtrarDestinos(criterios)
+            destinosFiltrados = filtrosController.filtrarDestinos(criterios)
             destinosAdapter.actualizarLista(destinosFiltrados)
         }
     }

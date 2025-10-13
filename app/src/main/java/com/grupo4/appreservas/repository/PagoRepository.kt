@@ -3,17 +3,17 @@ package com.grupo4.appreservas.repository
 import com.grupo4.appreservas.modelos.Payment
 import java.util.UUID
 
-class PaymentRepository private constructor() {
+class PagoRepository private constructor() {
 
     private val paymentsCache = mutableMapOf<String, Payment>()
 
     companion object {
         @Volatile
-        private var instance: PaymentRepository? = null
+        private var instance: PagoRepository? = null
 
-        fun getInstance(): PaymentRepository {
+        fun getInstance(): PagoRepository {
             return instance ?: synchronized(this) {
-                instance ?: PaymentRepository().also { instance = it }
+                instance ?: PagoRepository().also { instance = it }
             }
         }
     }

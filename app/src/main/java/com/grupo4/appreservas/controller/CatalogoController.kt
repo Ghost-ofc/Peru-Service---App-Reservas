@@ -4,7 +4,7 @@ import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.DestinationService
 
-class CatalogController(
+class CatalogoController(
     private val destinationService: DestinationService,
     private val availabilityService: AvailabilityService
 ) {
