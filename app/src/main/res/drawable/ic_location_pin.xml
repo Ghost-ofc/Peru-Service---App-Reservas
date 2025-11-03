@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="80dp"
+    android:height="80dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Círculo de fondo -->
+    <path
+        android:fillColor="#A64E3A"
+        android:pathData="M12,12m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"/>
+    <!-- Ícono de pin de ubicación -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,6C9.79,6 8,7.79 8,10c0,3.13 4,7.5 4,7.5s4,-4.37 4,-7.5c0,-2.21 -1.79,-4 -4,-4zM12,11.5c-0.83,0 -1.5,-0.67 -1.5,-1.5s0.67,-1.5 1.5,-1.5 1.5,0.67 1.5,1.5 -0.67,1.5 -1.5,1.5z"/>
+</vector>

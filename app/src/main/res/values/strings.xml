@@ -13,4 +13,25 @@
     <string name="precio">S/ %d</string>
     <string name="app_name">Peruvian Service</string>
     <string name="appbar_scrolling_view_behavior">com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior</string>
+
+    <string name="app_logo">Logo de Peruvian Service</string>
+
+    <!-- Login -->
+    <string name="peruvian_service">Peruvian Service</string>
+    <string name="inicia_sesion_para_continuar">Inicia sesión para continuar</string>
+    <string name="correo">Correo</string>
+    <string name="tu_correo">Tu Correo electronico</string>
+    <string name="contrasena">Contraseña</string>
+    <string name="tu_contrasena">Tu contraseña</string>
+    <string name="iniciar_sesion">Iniciar Sesión</string>
+    <string name="no_tienes_cuenta_registrate"><![CDATA[¿No tienes una cuenta? Regístrate aquí]]></string>
+
+    <!-- Registro -->
+    <string name="crear_cuenta">Crear Cuenta</string>
+    <string name="unete_a_peruvian_service">Únete a Peruvian Service</string>
+    <string name="nombre_completo">Nombre Completo</string>
+    <string name="tu_nombre_completo">Tu nombre completo</string>
+    <string name="elige_un_correo">Ingresa tu correo electronico</string>
+    <string name="minimo_6_caracteres">Mínimo 6 caracteres</string>
+    <string name="ya_tienes_cuenta_inicia_sesion"><![CDATA[¿Ya tienes una cuenta? Inicia sesión]]></string>
 </resources>

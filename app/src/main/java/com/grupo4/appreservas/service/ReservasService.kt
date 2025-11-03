@@ -39,7 +39,7 @@ class ReservasService(
             horaInicio = horaInicio,
             numPersonas = pax,
             precioTotal = precioTotal,
-            estado = EstadoReserva.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE
         )
 
         return reservasRepository.save(reserva)
@@ -51,7 +51,7 @@ class ReservasService(
         val codigoConfirmacion = "PS${UUID.randomUUID().toString().substring(0, 8).uppercase()}"
 
         val bookingActualizado = booking.copy(
-            estado = EstadoReserva.PAGADA,
+            estado = EstadoReserva.CONFIRMADO,
             codigoConfirmacion = codigoConfirmacion,
             metodoPago = payment
         )

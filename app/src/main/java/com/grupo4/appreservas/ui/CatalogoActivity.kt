@@ -48,7 +48,8 @@ class CatalogoActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val destinoRepo = DestinoRepository.getInstance()
+
+        val destinoRepo = DestinoRepository.getInstance(this)
         val bookingRepo = ReservasRepository.getInstance()
         val destinoService = DestinoService(destinoRepo)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)

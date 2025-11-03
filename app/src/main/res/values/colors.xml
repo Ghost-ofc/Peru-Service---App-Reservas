@@ -19,4 +19,12 @@
     <!-- Compat (por si algún recurso viejo aún se usa) -->
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
+    <color name="primary">#A64E3A</color>
+    <color name="primary_dark">#8B4230</color>
+    <color name="background_light">#F9F9F9</color>
+    <color name="text_primary">#5B5B5B</color>
+    <color name="text_secondary">#8E8E8E</color>
+    <color name="input_background">#F5F5F5</color>
+    <color name="input_border">#E0E0E0</color>
+
 </resources>

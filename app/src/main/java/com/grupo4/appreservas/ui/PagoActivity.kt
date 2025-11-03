@@ -69,7 +69,7 @@ class PagoActivity : AppCompatActivity() {
     private fun inicializarDependencias() {
         val paymentRepo = PagoRepository.getInstance()
         val bookingRepo = ReservasRepository.getInstance()
-        val destinoRepo = DestinoRepository.getInstance()
+        val destinoRepo = DestinoRepository.getInstance(this)
 
         val pagoService = PagoService(paymentRepo, bookingRepo)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)

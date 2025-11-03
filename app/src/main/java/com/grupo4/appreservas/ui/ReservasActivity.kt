@@ -63,7 +63,7 @@ class ReservasActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val destinoRepo = DestinoRepository.getInstance()
+        val destinoRepo = DestinoRepository.getInstance(this)
         val bookingRepo = ReservasRepository.getInstance()
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
         val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService)
