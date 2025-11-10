@@ -1,19 +1,20 @@
 package com.grupo4.appreservas.repository
 
+import android.content.Context
 import com.grupo4.appreservas.modelos.Pago
 import java.util.UUID
 
-class PagoRepository private constructor() {
+class PagoRepository private constructor(context: Context) {
 
-    private val paymentsCache = mutableMapOf<String, Pago>()
+    private val dbHelper: DatabaseHelper = DatabaseHelper(context)
 
     companion object {
         @Volatile
         private var instance: PagoRepository? = null
 
-        fun getInstance(): PagoRepository {
+        fun getInstance(context: Context): PagoRepository {
             return instance ?: synchronized(this) {
-                instance ?: PagoRepository().also { instance = it }
+                instance ?: PagoRepository(context.applicationContext).also { instance = it }
             }
         }
     }
@@ -22,20 +23,29 @@ class PagoRepository private constructor() {
         val nuevoPayment = if (payment.id.isEmpty()) {
             payment.copy(
                 id = "PAY${UUID.randomUUID().toString().substring(0, 8).uppercase()}",
-                transaccionId = "TXN${System.currentTimeMillis()}"
+                transaccionId = if (payment.transaccionId.isEmpty()) {
+                    "TXN${System.currentTimeMillis()}"
+                } else {
+                    payment.transaccionId
+                }
             )
         } else {
             payment
         }
-        paymentsCache[nuevoPayment.id] = nuevoPayment
+        
+        dbHelper.insertarPago(nuevoPayment)
         return nuevoPayment
     }
 
     fun findByBooking(bookingId: String): Pago? {
-        return paymentsCache.values.find { it.bookingId == bookingId }
+        return dbHelper.obtenerPagoPorBooking(bookingId)
     }
 
     fun findByBookingId(bookingId: String): Pago? {
         return findByBooking(bookingId)
+    }
+
+    fun findById(pagoId: String): Pago? {
+        return dbHelper.obtenerPagoPorId(pagoId)
     }
 }

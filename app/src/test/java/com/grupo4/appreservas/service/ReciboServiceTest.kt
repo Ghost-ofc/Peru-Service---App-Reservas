@@ -15,6 +15,7 @@ class ReciboServiceTest {
 
     private lateinit var reciboService: ReciboService
     private lateinit var reservasRepository: ReservasRepository
+    private lateinit var qrService: QRService
 
     private val reservaMock = Reserva(
         id = "BK12345678",
@@ -29,7 +30,7 @@ class ReciboServiceTest {
         horaInicio = "08:00",
         numPersonas = 2,
         precioTotal = 900.0,
-        estado = EstadoReserva.PAGADA,
+        estado = EstadoReserva.CONFIRMADO,
         codigoConfirmacion = "PS12345678",
         metodoPago = "YAPE"
     )
@@ -37,7 +38,9 @@ class ReciboServiceTest {
     @Before
     fun setUp() {
         reservasRepository = mockk()
-        reciboService = ReciboService(reservasRepository)
+        qrService = mockk()
+        every { qrService.generate(any()) } answers { "QR_CODE_BASE64_${firstArg<String>()}" }
+        reciboService = ReciboService(reservasRepository, qrService)
     }
 
     @After
@@ -63,7 +66,8 @@ class ReciboServiceTest {
         assertEquals(900.0, resultado!!.montoTotal, 0.01)
         assertEquals("YAPE", resultado?.metodoPago)
         assertEquals("08:00", resultado?.horaInicio)
-        assertTrue(resultado?.qrCode?.startsWith("QR_DATA_") ?: false)
+        assertTrue(resultado?.qrCode?.startsWith("QR_CODE_BASE64_") ?: false)
+        verify(exactly = 1) { qrService.generate("PS12345678") }
     }
 
     @Test
@@ -94,16 +98,18 @@ class ReciboServiceTest {
     }
 
     @Test
-    fun `test emitir genera QR con formato correcto`() {
+    fun `test emitir genera QR con formato correcto usando QRService`() {
         // Arrange
         val bookingId = "BK12345678"
         every { reservasRepository.find(bookingId) } returns reservaMock
+        every { qrService.generate("PS12345678") } returns "QR_CODE_BASE64_PS12345678"
 
         // Act
         val resultado = reciboService.emitir(bookingId)
 
         // Assert
         assertNotNull(resultado)
-        assertEquals("QR_DATA_PS12345678", resultado?.qrCode)
+        assertEquals("QR_CODE_BASE64_PS12345678", resultado?.qrCode)
+        verify(exactly = 1) { qrService.generate("PS12345678") }
     }
 }

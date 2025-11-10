@@ -37,10 +37,17 @@ class ListaParticipantesActivity : AppCompatActivity() {
 
     private fun cargarParticipantes() {
         val tourId = intent.getStringExtra("TOUR_ID") ?: return
+        
+        // Obtener el tour completo para obtener la capacidad total
+        val dbHelper = com.grupo4.appreservas.repository.DatabaseHelper(this)
+        val tour = dbHelper.obtenerTourPorId(tourId)
+        val capacidadTotal = tour?.capacidad ?: 0
+        
         val participantes = repositorioAsignaciones.obtenerParticipantes(tourId)
 
         val confirmados = participantes.count { it.estado == EstadoReserva.CONFIRMADO }
-        tvContador.text = "$confirmados de ${participantes.size} confirmados"
+        // Mostrar confirmados de capacidad total, no de participantes.size
+        tvContador.text = "$confirmados de $capacidadTotal confirmados"
 
         val adapter = ParticipantesAdapter(participantes)
         recyclerParticipantes.adapter = adapter

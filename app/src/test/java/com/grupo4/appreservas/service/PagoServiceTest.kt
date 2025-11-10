@@ -5,6 +5,7 @@ import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.modelos.Pago
 import com.grupo4.appreservas.repository.PagoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
+import com.grupo4.appreservas.service.PaymentGateway
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -17,12 +18,14 @@ class PagoServiceTest {
     private lateinit var pagoService: PagoService
     private lateinit var pagoRepository: PagoRepository
     private lateinit var reservasRepository: ReservasRepository
+    private lateinit var paymentGateway: PaymentGateway
 
     @Before
     fun setUp() {
         pagoRepository = mockk()
         reservasRepository = mockk()
-        pagoService = PagoService(pagoRepository, reservasRepository)
+        paymentGateway = mockk()
+        pagoService = PagoService(pagoRepository, reservasRepository, paymentGateway)
     }
 
     @After
@@ -37,10 +40,19 @@ class PagoServiceTest {
             "bookingId" to "BK12345678",
             "monto" to 900.0
         )
+        val paymentFromGateway = Pago(
+            id = "",
+            bookingId = "BK12345678",
+            monto = 900.0,
+            metodoPago = MetodoPago.YAPE,
+            estado = EstadoPago.APROBADO,
+            transaccionId = "TXN123456"
+        )
+        
+        coEvery { paymentGateway.charge(any()) } returns paymentFromGateway
         every { pagoRepository.save(any()) } answers {
             firstArg<Pago>().copy(
-                id = "PAY12345678",
-                transaccionId = "TXN123456"
+                id = "PAY12345678"
             )
         }
 
@@ -53,6 +65,7 @@ class PagoServiceTest {
         assertEquals(MetodoPago.YAPE, resultado.metodoPago)
         assertEquals(EstadoPago.APROBADO, resultado.estado)
         assertNotEquals("", resultado.id)
+        coVerify(exactly = 1) { paymentGateway.charge(any()) }
         verify(exactly = 1) { pagoRepository.save(any()) }
     }
 
@@ -63,11 +76,18 @@ class PagoServiceTest {
             "bookingId" to "BK12345678",
             "monto" to 900.0
         )
+        val paymentFromGateway = Pago(
+            id = "",
+            bookingId = "BK12345678",
+            monto = 900.0,
+            metodoPago = MetodoPago.PLIN,
+            estado = EstadoPago.APROBADO,
+            transaccionId = "TXN123456"
+        )
+        
+        coEvery { paymentGateway.charge(any()) } returns paymentFromGateway
         every { pagoRepository.save(any()) } answers {
-            firstArg<Pago>().copy(
-                id = "PAY12345678",
-                transaccionId = "TXN123456"
-            )
+            firstArg<Pago>().copy(id = "PAY12345678")
         }
 
         // Act
@@ -76,6 +96,7 @@ class PagoServiceTest {
         // Assert
         assertEquals(MetodoPago.PLIN, resultado.metodoPago)
         assertEquals(EstadoPago.APROBADO, resultado.estado)
+        coVerify(exactly = 1) { paymentGateway.charge(any()) }
     }
 
     @Test
@@ -85,11 +106,18 @@ class PagoServiceTest {
             "bookingId" to "BK12345678",
             "monto" to 900.0
         )
+        val paymentFromGateway = Pago(
+            id = "",
+            bookingId = "BK12345678",
+            monto = 900.0,
+            metodoPago = MetodoPago.TARJETA,
+            estado = EstadoPago.APROBADO,
+            transaccionId = "TXN123456"
+        )
+        
+        coEvery { paymentGateway.charge(any()) } returns paymentFromGateway
         every { pagoRepository.save(any()) } answers {
-            firstArg<Pago>().copy(
-                id = "PAY12345678",
-                transaccionId = "TXN123456"
-            )
+            firstArg<Pago>().copy(id = "PAY12345678")
         }
 
         // Act
@@ -98,28 +126,35 @@ class PagoServiceTest {
         // Assert
         assertEquals(MetodoPago.TARJETA, resultado.metodoPago)
         assertEquals(EstadoPago.APROBADO, resultado.estado)
+        coVerify(exactly = 1) { paymentGateway.charge(any()) }
     }
 
     @Test
-    fun `test payYape toma tiempo de procesamiento simulado`() = runBlocking {
+    fun `test payYape usa PaymentGateway para procesar pago`() = runBlocking {
         // Arrange
         val req = mapOf(
             "bookingId" to "BK12345678",
             "monto" to 900.0
         )
+        val paymentFromGateway = Pago(
+            id = "",
+            bookingId = "BK12345678",
+            monto = 900.0,
+            metodoPago = MetodoPago.YAPE,
+            estado = EstadoPago.APROBADO,
+            transaccionId = "TXN123456"
+        )
+        
+        coEvery { paymentGateway.charge(any()) } returns paymentFromGateway
         every { pagoRepository.save(any()) } answers {
             firstArg<Pago>().copy(id = "PAY12345678")
         }
 
-        val startTime = System.currentTimeMillis()
-
         // Act
         pagoService.payYape(req)
 
-        val endTime = System.currentTimeMillis()
-        val duration = endTime - startTime
-
-        // Assert - Debería tomar al menos 1500ms
-        assertTrue(duration >= 1400) // Margen de error
+        // Assert - Verificar que PaymentGateway.charge fue llamado
+        coVerify(exactly = 1) { paymentGateway.charge(any()) }
+        verify(exactly = 1) { pagoRepository.save(any()) }
     }
 }

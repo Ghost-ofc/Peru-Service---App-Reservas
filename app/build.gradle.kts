@@ -12,8 +12,8 @@ android {
         applicationId = "com.grupo4.appreservas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -76,4 +76,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.google.zxing:core:3.5.3")
+    
+    // WorkManager para notificaciones push en segundo plano
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

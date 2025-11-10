@@ -1,9 +1,11 @@
 package com.grupo4.appreservas.controller
 
+import com.grupo4.appreservas.modelos.Destino
 import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.ReservasService
+import com.grupo4.appreservas.service.DestinoService
 import io.mockk.*
 import org.junit.After
 import org.junit.Before
@@ -16,17 +18,55 @@ class ReservasControllerTest {
     private lateinit var reservasController: ReservasController
     private lateinit var reservasService: ReservasService
     private lateinit var availabilityService: AvailabilityService
+    private lateinit var destinoService: DestinoService
 
     @Before
     fun setUp() {
         reservasService = mockk()
         availabilityService = mockk()
-        reservasController = ReservasController(reservasService, availabilityService)
+        destinoService = mockk()
+        reservasController = ReservasController(reservasService, availabilityService, destinoService)
     }
 
     @After
     fun tearDown() {
         clearAllMocks()
+    }
+
+    @Test
+    fun `test iniciarReserva devuelve destino cuando existe`() {
+        // Arrange
+        val tourId = "dest_001"
+        val destinoMock = Destino(
+            id = tourId,
+            nombre = "Tour Test",
+            precio = 450.0,
+            maxPersonas = 15
+        )
+        every { destinoService.obtenerDetalle(tourId) } returns destinoMock
+
+        // Act
+        val resultado = reservasController.iniciarReserva(tourId)
+
+        // Assert
+        assertNotNull(resultado)
+        assertEquals(tourId, resultado?.id)
+        assertEquals("Tour Test", resultado?.nombre)
+        verify(exactly = 1) { destinoService.obtenerDetalle(tourId) }
+    }
+
+    @Test
+    fun `test iniciarReserva devuelve null cuando destino no existe`() {
+        // Arrange
+        val tourId = "dest_999"
+        every { destinoService.obtenerDetalle(tourId) } returns null
+
+        // Act
+        val resultado = reservasController.iniciarReserva(tourId)
+
+        // Assert
+        assertNull(resultado)
+        verify(exactly = 1) { destinoService.obtenerDetalle(tourId) }
     }
 
     @Test
@@ -94,7 +134,7 @@ class ReservasControllerTest {
             horaInicio = "08:00",
             numPersonas = pax,
             precioTotal = 900.0,
-            estado = EstadoReserva.PENDIENTE_PAGO
+            estado = EstadoReserva.PENDIENTE
         )
         every { reservasService.crear(any(), any(), any(), any(), any(), any()) } returns reservaMock
 

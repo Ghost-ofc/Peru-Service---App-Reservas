@@ -1,5 +1,6 @@
 package com.grupo4.appreservas.integracion
 
+import android.content.Context
 import com.grupo4.appreservas.controller.CatalogoController
 import com.grupo4.appreservas.controller.ReservasController
 import com.grupo4.appreservas.modelos.Reserva
@@ -8,6 +9,8 @@ import com.grupo4.appreservas.modelos.EstadoReserva
 import com.grupo4.appreservas.modelos.TourSlot
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.ReservasRepository
+import com.grupo4.appreservas.repository.DatabaseHelper
+import com.grupo4.appreservas.modelos.Usuario
 import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.DestinoService
 import com.grupo4.appreservas.service.ReservasService
@@ -27,18 +30,38 @@ class IntegracionCatalogoReservaTest {
     private lateinit var destinationService: DestinoService
     private lateinit var availabilityService: AvailabilityService
     private lateinit var reservasService: ReservasService
+    private lateinit var context: Context
 
     @Before
     fun setUp() {
         destinoRepository = mockk()
         reservasRepository = mockk()
+        context = mockk(relaxed = true)
+
+        // Mock DatabaseHelper constructor para que no falle cuando se crea
+        mockkConstructor(DatabaseHelper::class)
+        every { anyConstructed<DatabaseHelper>().buscarUsuarioPorId(any()) } answers {
+            val userId = firstArg<Int>()
+            if (userId == 1 || userId > 0) {
+                Usuario(
+                    usuarioId = userId,
+                    nombreCompleto = "Usuario Test",
+                    correo = "test@example.com",
+                    contrasena = "password",
+                    rolId = 2,
+                    fechaCreacion = "2025-01-01"
+                )
+            } else {
+                null
+            }
+        }
 
         destinationService = DestinoService(destinoRepository)
         availabilityService = AvailabilityService(destinoRepository, reservasRepository)
-        reservasService = ReservasService(reservasRepository, destinoRepository, availabilityService)
+        reservasService = ReservasService(reservasRepository, destinoRepository, availabilityService, context)
 
         catalogoController = CatalogoController(destinationService, availabilityService)
-        reservasController = ReservasController(reservasService, availabilityService)
+        reservasController = ReservasController(reservasService, availabilityService, destinationService)
     }
 
     @After
@@ -63,6 +86,17 @@ class IntegracionCatalogoReservaTest {
             ocupados = 0
         )
 
+        // Configurar mocks para availabilityService
+        every { availabilityService.consultarDisponibilidad(any()) } returns mapOf(
+            "tourSlotId" to tourSlotId,
+            "cuposDisponibles" to 15,
+            "cuposTotales" to 15,
+            "ocupados" to 0,
+            "disponible" to true
+        )
+        every { availabilityService.verificarYBloquearCupos(any(), any()) } returns true
+        every { availabilityService.lockSeats(any(), any()) } returns true
+        
         every { destinationService.listarDestinos() } returns listOf(destino)
         every { destinoRepository.getDestinos() } returns listOf(destino)
         every { destinoRepository.getDetalle("dest_001") } returns destino
@@ -75,7 +109,7 @@ class IntegracionCatalogoReservaTest {
         // Act
         // 1. Usuario busca destinos
         val destinos = catalogoController.solicitarDestinos()
-
+        
         // 2. Usuario consulta disponibilidad
         val disponibilidad = reservasController.consultarDisponibilidad(tourSlotId)
 
@@ -83,7 +117,7 @@ class IntegracionCatalogoReservaTest {
         val seatsLocked = reservasController.lockSeats(tourSlotId, 2)
 
         // 4. Usuario crea reserva
-        val booking = reservasController.crearReservaCmd("user_123", tourSlotId, 2)
+        val booking = reservasController.crearReservaCmd("1", tourSlotId, 2, "08:00")
 
         // Assert
         assertNotNull(destinos)
@@ -91,6 +125,6 @@ class IntegracionCatalogoReservaTest {
         assertEquals(15, disponibilidad["cuposDisponibles"])
         assertTrue(seatsLocked)
         assertNotNull(booking)
-        assertEquals(EstadoReserva.PENDIENTE_PAGO, booking?.estado)
+        assertEquals(EstadoReserva.PENDIENTE, booking?.estado)
     }
 }

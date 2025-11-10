@@ -3,46 +3,47 @@ package com.grupo4.appreservas.service
 import android.content.Context
 import com.grupo4.appreservas.modelos.Usuario
 import com.grupo4.appreservas.repository.UsuarioRepository
-import java.security.MessageDigest
 
+/**
+ * Servicio de Usuarios según el diagrama UML.
+ * Equivalente a RepositorioUsuarios del diagrama (nivel de servicio).
+ */
 class UsuariosService(context: Context){
     private val usuarioRepository = UsuarioRepository(context)
 
-    fun crearUsuario(datos: DatosRegistro): Usuario? {
-        // Validar que el correo no exista
-        if (usuarioRepository.buscarPorCorreo(datos.correo) != null) {
-            return null // Usuario ya existe
-        }
-
-        val contrasenaEncriptada = encriptarContrasena(datos.contrasena)
+    /**
+     * Crea un nuevo usuario.
+     * Equivalente a crearUsuario(datos): Usuario del diagrama UML.
+     * 
+     * @param datos Datos del usuario a crear
+     * @param rolId Rol del usuario (opcional, por defecto 2 = Turista)
+     * @return Usuario creado o null si hay error
+     */
+    fun crearUsuario(datos: DatosRegistro, rolId: Int = 2): Usuario? {
+        // El repositorio ya valida y encripta, solo creamos el usuario con datos básicos
         val nuevoUsuario = Usuario(
             nombreCompleto = datos.nombreCompleto,
             correo = datos.correo,
-            contrasena = contrasenaEncriptada,
-            rolId = 2 // Siempre Turista para registro público
+            contrasena = datos.contrasena, // El repositorio se encargará de encriptarla
+            rolId = rolId
         )
 
-        return if (usuarioRepository.crearUsuario(nuevoUsuario?: return null) != null) {
-            usuarioRepository.buscarPorCorreo(datos.correo)
-        } else {
-            null
-        }
+        // UsuarioRepository valida duplicados y encripta la contraseña
+        return usuarioRepository.crearUsuario(nuevoUsuario)
     }
+
+    /**
+     * Valida las credenciales de un usuario.
+     * Equivalente a validarCredenciales(correo, contrasena): Usuario del diagrama UML.
+     * 
+     * @param correo Correo electrónico
+     * @param contrasena Contraseña
+     * @return Usuario si las credenciales son válidas, null en caso contrario
+     */
 
     fun validarCredenciales(correo: String, contrasena: String): Usuario? {
-        val usuario = usuarioRepository.buscarPorCorreo(correo) ?: return null
-        val contrasenaEncriptada = encriptarContrasena(contrasena)
-
-        return if (usuario.contrasena == contrasenaEncriptada) {
-            usuario
-        } else {
-            null
-        }
-    }
-
-    private fun encriptarContrasena(contrasena: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(contrasena.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
+        // UsuarioRepository ya maneja la validación y encriptación
+        return usuarioRepository.validarCredenciales(correo, contrasena)
     }
 
     data class DatosRegistro(

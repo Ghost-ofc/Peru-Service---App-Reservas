@@ -52,23 +52,59 @@ class DetalleTourActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Muestra el detalle de un tour específico.
+     * Equivalente a mostrarDetalleTour(tour) del diagrama UML.
+     */
     private fun mostrarDetalleTour() {
         tourId = intent.getStringExtra("TOUR_ID") ?: return
 
-        // En producción, obtendrías el tour completo del repositorio
-        // Por ahora, usamos datos de ejemplo
-        tvNombreTour.text = "Machu Picchu Tour Completo"
-        tvFechaHora.text = "27 de Octubre, 2025\n08:00 AM"
-        tvPunto.text = "Plaza de Armas, Cusco"
+        // Obtener el tour completo del repositorio
+        val dbHelper = com.grupo4.appreservas.repository.DatabaseHelper(this)
+        val tour = dbHelper.obtenerTourPorId(tourId)
+        
+        if (tour != null) {
+            // Formatear fecha para mostrar
+            val fechaFormateada = try {
+                val formatoEntrada = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val formatoSalida = java.text.SimpleDateFormat("d 'de' MMMM, yyyy", java.util.Locale("es", "ES"))
+                val fecha = formatoEntrada.parse(tour.fecha)
+                if (fecha != null) {
+                    formatoSalida.format(fecha).replaceFirstChar { 
+                        if (it.isLowerCase()) it.titlecase(java.util.Locale("es", "ES")) else it.toString() 
+                    }
+                } else {
+                    tour.fecha
+                }
+            } catch (e: Exception) {
+                tour.fecha
+            }
+            
+            tvNombreTour.text = tour.nombre
+            tvFechaHora.text = "$fechaFormateada\n${tour.hora}"
+            tvPunto.text = tour.puntoEncuentro
 
-        val participantes = repositorioAsignaciones.obtenerParticipantes(tourId)
-        val confirmados = participantes.count { it.estado == EstadoReserva.CONFIRMADO }
-        tvParticipantes.text = "$confirmados de ${participantes.size} confirmados"
+            // Obtener participantes y mostrar confirmados vs capacidad total del tour
+            val participantes = repositorioAsignaciones.obtenerParticipantes(tourId)
+            val confirmados = participantes.count { it.estado == EstadoReserva.CONFIRMADO }
+            tvParticipantes.text = "$confirmados de ${tour.capacidad} confirmados"
+        } else {
+            // Fallback si no se encuentra el tour
+            tvNombreTour.text = "Tour no encontrado"
+            tvParticipantes.text = "0 de 0 confirmados"
+        }
     }
 
+    /**
+     * Abre la actividad de escaneo QR.
+     * Equivalente a abrirEscaneoQR() del diagrama UML.
+     */
     private fun abrirEscaneoQR() {
         val intent = Intent(this, EscaneoQRActivity::class.java)
         intent.putExtra("TOUR_ID", tourId)
+        // Obtener GUIA_ID de la sesión o del intent
+        val guiaId = intent.getIntExtra("GUIA_ID", 1)
+        intent.putExtra("GUIA_ID", guiaId)
         startActivity(intent)
     }
 

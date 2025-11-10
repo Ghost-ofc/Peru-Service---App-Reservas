@@ -49,17 +49,26 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_notifications"
-            android:contentDescription="Notificaciones" />
+            android:contentDescription="Notificaciones"
+            android:layout_marginEnd="12dp" />
 
-        <TextView
+        <Button
             android:id="@+id/btn_salir"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Salir"
             android:textColor="@android:color/white"
             android:textSize="14sp"
-            android:padding="8dp"
-            android:layout_marginStart="8dp" />
+            android:textStyle="bold"
+            android:background="@drawable/btn_salir_background"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:minHeight="36dp"
+            android:minWidth="64dp"
+            android:elevation="2dp"
+            android:stateListAnimator="@null" />
     </LinearLayout>
 
     <!-- Título -->
@@ -81,7 +90,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tours asignados para hoy"
+            android:text="Todos los tours asignados"
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:layout_marginTop="4dp" />

@@ -9,12 +9,22 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.card.MaterialCardView
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.controller.PagoController
+import com.grupo4.appreservas.controller.ControlNotificaciones
 import com.grupo4.appreservas.repository.ReservasRepository
 import com.grupo4.appreservas.repository.DestinoRepository
 import com.grupo4.appreservas.repository.PagoRepository
+import com.grupo4.appreservas.repository.RepositorioNotificaciones
+import com.grupo4.appreservas.repository.RepositorioOfertas
+import com.grupo4.appreservas.repository.RepositorioClima
+import com.grupo4.appreservas.repository.RepositorioRecompensas
+import com.grupo4.appreservas.viewmodel.RecompensasViewModel
 import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.MetodoPago
+import com.grupo4.appreservas.modelos.Notificacion
+import com.grupo4.appreservas.modelos.TipoNotificacion
+import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.service.*
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -22,6 +32,7 @@ import java.util.*
 class PagoActivity : AppCompatActivity() {
 
     private lateinit var pagoController: PagoController
+    private lateinit var controlNotificaciones: ControlNotificaciones
     private lateinit var reserva: Reserva
 
     private lateinit var txtDestinoNombre: TextView
@@ -67,16 +78,32 @@ class PagoActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val paymentRepo = PagoRepository.getInstance()
-        val bookingRepo = ReservasRepository.getInstance()
+        val paymentRepo = PagoRepository.getInstance(this)
+        val bookingRepo = ReservasRepository.getInstance(this)
         val destinoRepo = DestinoRepository.getInstance(this)
 
-        val pagoService = PagoService(paymentRepo, bookingRepo)
+        val paymentGateway = PaymentGateway()
+        val pagoService = PagoService(paymentRepo, bookingRepo, paymentGateway)
         val availabilityService = AvailabilityService(destinoRepo, bookingRepo)
-        val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService)
-        val reciboService = ReciboService(bookingRepo)
+        val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService, this)
+        val qrService = QRService()
+        val reciboService = ReciboService(bookingRepo, qrService)
 
         pagoController = PagoController(pagoService, reservasService, reciboService)
+
+        // Inicializar controlador de notificaciones
+        val repositorioNotificaciones = RepositorioNotificaciones(this)
+        val repositorioOfertas = RepositorioOfertas(this)
+        val repositorioClima = RepositorioClima(this)
+        val notificacionesService = NotificacionesService(this)
+
+        controlNotificaciones = ControlNotificaciones(
+            repositorioNotificaciones,
+            repositorioOfertas,
+            repositorioClima,
+            notificacionesService,
+            this
+        )
     }
 
     private fun inicializarVistas() {
@@ -207,6 +234,12 @@ class PagoActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
 
+                    // Generar notificación de confirmación de reserva
+                    generarNotificacionConfirmacionReserva()
+
+                    // Sumar puntos por reserva completada (HU-007)
+                    sumarPuntosPorReserva()
+
                     mostrarComprobante()
                 } else {
                     Toast.makeText(
@@ -243,5 +276,64 @@ class PagoActivity : AppCompatActivity() {
         intent.putExtra("BOOKING_ID", reserva.id)
         startActivity(intent)
         finish()
+    }
+
+    /**
+     * Genera una notificación de confirmación de reserva después de confirmar el pago.
+     */
+    private fun generarNotificacionConfirmacionReserva() {
+        try {
+            val destino = reserva.destino
+            val destinoNombre = destino?.nombre ?: "Tour"
+            val puntoEncuentro = destino?.ubicacion ?: reserva.destino?.ubicacion ?: ""
+            
+            // Obtener tour para obtener punto de encuentro y hora
+            val dbHelper = com.grupo4.appreservas.repository.DatabaseHelper(this)
+            val tour = reserva.tourId.let { dbHelper.obtenerTourPorId(it) }
+            val puntoEncuentroFinal = tour?.puntoEncuentro ?: puntoEncuentro
+            val horaTour = reserva.horaInicio ?: tour?.hora ?: ""
+
+            val notificacion = Notificacion(
+                id = "CONF_${UUID.randomUUID().toString().substring(0, 8).uppercase()}",
+                usuarioId = reserva.usuarioId,
+                tipo = TipoNotificacion.CONFIRMACION_RESERVA,
+                titulo = "Confirmación de Reserva",
+                descripcion = "Tu reserva para '$destinoNombre' ha sido confirmada",
+                fechaCreacion = Date(),
+                tourId = reserva.tourId,
+                destinoNombre = destinoNombre,
+                puntoEncuentro = puntoEncuentroFinal,
+                horaTour = horaTour
+            )
+
+            // Guardar y enviar notificación
+            val repositorioNotificaciones = RepositorioNotificaciones(this)
+            repositorioNotificaciones.enviarNotificacionPush(notificacion)
+            
+            val notificacionesService = NotificacionesService(this)
+            notificacionesService.enviarNotificacionPush(notificacion)
+        } catch (e: Exception) {
+            android.util.Log.e("PagoActivity", "Error al generar notificación de confirmación: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Suma puntos al usuario por completar una reserva (HU-007).
+     * También actualiza el ViewModel para verificar logros.
+     */
+    private fun sumarPuntosPorReserva() {
+        try {
+            val repositorioRecompensas = RepositorioRecompensas(this)
+            val puntosAGanar = PuntosUsuario.PUNTOS_POR_RESERVA
+            repositorioRecompensas.sumarPuntos(reserva.usuarioId, puntosAGanar)
+            
+            // Actualizar ViewModel para verificar logros
+            val viewModel = ViewModelProvider(this)[RecompensasViewModel::class.java]
+            viewModel.actualizarPuntos(reserva.usuarioId, reserva.id)
+            
+            android.util.Log.d("PagoActivity", "Puntos sumados: $puntosAGanar para usuario ${reserva.usuarioId}")
+        } catch (e: Exception) {
+            android.util.Log.e("PagoActivity", "Error al sumar puntos: ${e.message}", e)
+        }
     }
 }

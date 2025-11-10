@@ -112,7 +112,73 @@
                 android:textStyle="bold"
                 android:textColor="@color/color_primary"
                 android:letterSpacing="0.05"
-                android:layout_marginBottom="28dp"/>
+                android:layout_marginBottom="24dp"/>
+
+            <!-- Card de puntos ganados (HU-007) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPuntosGanados"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#FFEB3B">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="¡Ganaste puntos!"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/color_text" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Por completar esta reserva"
+                            android:textSize="12sp"
+                            android:textColor="@color/color_text_muted"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@android:drawable/stat_notify_sync"
+                            android:tint="@color/color_text"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:id="@+id/txtPuntosGanados"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="+200"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/color_text" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Card de detalles -->
             <com.google.android.material.card.MaterialCardView

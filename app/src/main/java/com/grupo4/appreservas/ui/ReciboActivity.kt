@@ -1,5 +1,6 @@
 package com.grupo4.appreservas.ui
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Bundle
@@ -12,7 +13,9 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.repository.ReservasRepository
+import com.grupo4.appreservas.repository.RepositorioRecompensas
 import com.grupo4.appreservas.modelos.Recibo
+import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.service.QRService
 import com.grupo4.appreservas.service.ReciboService
 import java.text.SimpleDateFormat
@@ -33,8 +36,11 @@ class ReciboActivity : AppCompatActivity() {
     private lateinit var txtMetodoPago: TextView
     private lateinit var imgQR: ImageView
     private lateinit var btnVerMisReservas: Button
+    private lateinit var txtPuntosGanados: TextView
+    private lateinit var cardPuntosGanados: com.google.android.material.card.MaterialCardView
 
     private var bookingId: String = ""
+    private var usuarioId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,9 +62,9 @@ class ReciboActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        val bookingRepo = ReservasRepository.getInstance()
-        reciboService = ReciboService(bookingRepo)
+        val bookingRepo = ReservasRepository.getInstance(this)
         qrService = QRService()
+        reciboService = ReciboService(bookingRepo, qrService)
     }
 
     private fun inicializarVistas() {
@@ -72,13 +78,20 @@ class ReciboActivity : AppCompatActivity() {
         txtMetodoPago = findViewById(R.id.txtMetodoPago)
         imgQR = findViewById(R.id.imgQR)
         btnVerMisReservas = findViewById(R.id.btnVerMisReservas)
+        txtPuntosGanados = findViewById(R.id.txtPuntosGanados)
+        cardPuntosGanados = findViewById(R.id.cardPuntosGanados)
 
         btnBack.setOnClickListener {
             finish()
         }
 
         btnVerMisReservas.setOnClickListener {
-            // Navegar a mis reservas
+            // Navegar a mis reservas (perfil)
+            if (usuarioId > 0) {
+                val intent = Intent(this, RecompensasActivity::class.java)
+                intent.putExtra("USUARIO_ID", usuarioId)
+                startActivity(intent)
+            }
             finish()
         }
     }
@@ -88,7 +101,12 @@ class ReciboActivity : AppCompatActivity() {
             val voucher = reciboService.emitir(bookingId)
 
             if (voucher != null) {
+                // Obtener usuarioId de la reserva
+                val reserva = ReservasRepository.getInstance(this).find(bookingId)
+                usuarioId = reserva?.usuarioId ?: 0
+                
                 mostrarVoucher(voucher)
+                mostrarPuntosGanados()
             } else {
                 Toast.makeText(this, "Error al generar comprobante", Toast.LENGTH_SHORT).show()
                 finish()
@@ -97,6 +115,20 @@ class ReciboActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             finish()
+        }
+    }
+
+    /**
+     * Muestra los puntos ganados por completar la reserva (HU-007).
+     */
+    private fun mostrarPuntosGanados() {
+        try {
+            val puntosGanados = PuntosUsuario.PUNTOS_POR_RESERVA
+            txtPuntosGanados.text = "+$puntosGanados"
+            cardPuntosGanados.visibility = android.view.View.VISIBLE
+        } catch (e: Exception) {
+            android.util.Log.e("ReciboActivity", "Error al mostrar puntos: ${e.message}", e)
+            cardPuntosGanados.visibility = android.view.View.GONE
         }
     }
 
@@ -113,16 +145,26 @@ class ReciboActivity : AppCompatActivity() {
         txtNumPersonas.text = "${recibo.numPersonas} persona${if (recibo.numPersonas > 1) "s" else ""}"
         txtMontoTotal.text = "S/ ${recibo.montoTotal.toInt()}"
         txtMetodoPago.text = recibo.metodoPago
+        txtHora.text = recibo.horaInicio
 
-        // Generar y mostrar QR
-        generarQR(recibo.codigoConfirmacion)
+        // Mostrar QR usando el código que viene del servicio
+        // El QRService ya generó el código, aquí lo renderizamos visualmente
+        mostrarQR(recibo.qrCode)
     }
 
-    private fun generarQR(codigo: String) {
+    /**
+     * Renderiza el código QR en la vista.
+     * Equivalente a showQR(code) del diagrama UML VoucherView.
+     * 
+     * @param qrCodeData Datos del QR generados por QRService (formato: "RESERVA:<reservaId>")
+     */
+    private fun mostrarQR(qrCodeData: String) {
         try {
+            // El QR ya viene en el formato correcto desde QRService: "RESERVA:<reservaId>"
+            // Generar el bitmap QR usando ZXing para renderización visual
             val qrCodeWriter = QRCodeWriter()
             val bitMatrix = qrCodeWriter.encode(
-                codigo,
+                qrCodeData, // Usar directamente el código QR generado
                 BarcodeFormat.QR_CODE,
                 512,
                 512
@@ -141,7 +183,7 @@ class ReciboActivity : AppCompatActivity() {
             imgQR.setImageBitmap(bitmap)
 
         } catch (e: Exception) {
-            Toast.makeText(this, "Error al generar QR", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error al mostrar QR: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
