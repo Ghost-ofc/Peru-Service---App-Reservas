@@ -38,7 +38,7 @@ class PagoControllerTest {
         horaInicio = "08:00",
         numPersonas = 2,
         precioTotal = 900.0,
-        estado = EstadoReserva.PENDIENTE_PAGO
+        estado = EstadoReserva.PENDIENTE
     )
 
     @Before
@@ -174,7 +174,7 @@ class PagoControllerTest {
             transaccionId = "TXN123456"
         )
         val bookingActualizado = reservaMock.copy(
-            estado = EstadoReserva.PAGADA,
+            estado = EstadoReserva.CONFIRMADO,
             codigoConfirmacion = "PS12345678",
             metodoPago = "YAPE"
         )

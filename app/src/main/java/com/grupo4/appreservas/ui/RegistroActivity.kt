@@ -8,13 +8,20 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.modelos.Usuario
-import com.grupo4.appreservas.repository.UsuarioRepository
+import com.grupo4.appreservas.controller.ControlAuth
+import com.grupo4.appreservas.service.RolesService
+import com.grupo4.appreservas.service.UsuariosService
 
-
+/**
+ * Activity de Registro según el diagrama UML.
+ * Equivalente a RegistroActivity del diagrama.
+ * 
+ * En arquitectura MVC, esta Activity (Vista) usa el ControlAuth (Controller)
+ * para manejar la lógica de registro.
+ */
 class RegistroActivity : AppCompatActivity() {
 
-    private lateinit var repositorioUsuarios: UsuarioRepository
+    private lateinit var controlAuth: ControlAuth
 
     private lateinit var etNombre: EditText
     private lateinit var etCorreo: EditText
@@ -32,7 +39,10 @@ class RegistroActivity : AppCompatActivity() {
     }
 
     private fun inicializarDependencias() {
-        repositorioUsuarios = UsuarioRepository(this)
+        // Inicializar servicios y controlador según arquitectura MVC
+        val usuariosService = UsuariosService(this)
+        val rolesService = RolesService(this)
+        controlAuth = ControlAuth(usuariosService, rolesService)
     }
 
     private fun inicializarVistas() {
@@ -43,6 +53,10 @@ class RegistroActivity : AppCompatActivity() {
         tvIniciarSesion = findViewById(R.id.tv_iniciar_sesion)
     }
 
+    /**
+     * Muestra el formulario de registro.
+     * Equivalente a mostrarFormulario() del diagrama UML.
+     */
     private fun mostrarFormulario() {
         btnCrearCuenta.setOnClickListener {
             enviarDatos()
@@ -53,63 +67,49 @@ class RegistroActivity : AppCompatActivity() {
         }
     }
 
-    private fun enviarDatos(nombre: String, correo: String, contrasena: String, rol: Int) {
-        if (nombre.isEmpty() || correo.isEmpty() || contrasena.isEmpty()) {
-            mostrarError("Por favor completa todos los campos")
-            return
-        }
-
-        if (!esCorreoValido(correo)) {
-            mostrarError("Correo electrónico inválido")
-            return
-        }
-
-        if (contrasena.length < 6) {
-            mostrarError("La contraseña debe tener al menos 6 caracteres")
-            return
-        }
-
-        val usercreate = Usuario(
-            nombreCompleto = nombre,
-            correo = correo,
-            contrasena = contrasena,
-            rolId = rol
-        )
-
-        val usuario = repositorioUsuarios.crearUsuario(usercreate)
-
-        if (usuario != null) {
-            mostrarConfirmacion("Cuenta creada exitosamente")
-
-            val intent = Intent(this, CatalogoActivity::class.java)
-            intent.putExtra("USUARIO_ID", usuario.usuarioId)
-            intent.putExtra("ROL_ID", usuario.rolId)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-            finish()
-        } else {
-            mostrarError("El correo ya está registrado")
-        }
-    }
-
+    /**
+     * Envía los datos del formulario para registro.
+     * Equivalente a enviarDatos(nombre, correo, contrasena, rol) del diagrama UML.
+     */
     private fun enviarDatos() {
         val nombre = etNombre.text.toString().trim()
         val correo = etCorreo.text.toString().trim()
         val contrasena = etContrasena.text.toString()
         val rol = 2 // Siempre Turista para registro público
 
-        enviarDatos(nombre, correo, contrasena, rol)
+        // Usar ControlAuth para registrar usuario (patrón MVC)
+        val resultado = controlAuth.registrar(nombre, correo, contrasena, rol)
+
+        when (resultado) {
+            is ControlAuth.ResultadoAuth.Exito -> {
+                val usuario = resultado.usuario
+                mostrarConfirmacion("Cuenta creada exitosamente")
+
+                // Redirigir al catálogo después del registro
+                val intent = Intent(this, CatalogoActivity::class.java)
+                intent.putExtra("USUARIO_ID", usuario.usuarioId)
+                intent.putExtra("ROL_ID", usuario.rolId)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+            is ControlAuth.ResultadoAuth.Error -> {
+                mostrarError(resultado.mensaje)
+            }
+        }
     }
 
-    private fun esCorreoValido(correo: String): Boolean {
-        val patronCorreo = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
-        return patronCorreo.matches(correo)
-    }
-
+    /**
+     * Muestra un mensaje de confirmación.
+     * Equivalente a mostrarConfirmacion(mensaje) del diagrama UML.
+     */
     private fun mostrarConfirmacion(mensaje: String) {
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }
 
+    /**
+     * Muestra un mensaje de error.
+     */
     private fun mostrarError(mensaje: String) {
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }

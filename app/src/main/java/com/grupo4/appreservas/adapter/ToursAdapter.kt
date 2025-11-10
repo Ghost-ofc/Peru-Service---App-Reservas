@@ -8,6 +8,9 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.modelos.Tour
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ToursAdapter(
     private val tours: List<Tour>,
@@ -33,7 +36,10 @@ class ToursAdapter(
         val tour = tours[position]
 
         holder.tvNombre.text = tour.nombre
-        holder.tvFecha.text = "${tour.fecha} • ${tour.hora}"
+        
+        // Formatear fecha en formato legible (ej: "09 Nov 2025 • 09:00")
+        val fechaFormateada = formatearFecha(tour.fecha)
+        holder.tvFecha.text = "$fechaFormateada • ${tour.hora}"
         holder.tvPunto.text = tour.puntoEncuentro
 
         // Formato mejorado para participantes
@@ -50,12 +56,32 @@ class ToursAdapter(
         val colorEstado = when (tour.estado) {
             "Completado" -> android.graphics.Color.parseColor("#4CAF50")
             "En Curso" -> android.graphics.Color.parseColor("#2196F3")
+            "Disponible" -> android.graphics.Color.parseColor("#4CAF50")
             else -> android.graphics.Color.parseColor("#FF9800") // Pendiente
         }
         holder.tvEstado.setTextColor(colorEstado)
 
         holder.btnVerDetalles.setOnClickListener {
             onTourClick(tour)
+        }
+    }
+    
+    /**
+     * Formatea una fecha en formato "yyyy-MM-dd" a formato legible "dd MMM yyyy".
+     * Ejemplo: "2025-11-09" -> "09 Nov 2025"
+     */
+    private fun formatearFecha(fechaStr: String): String {
+        return try {
+            val formatoEntrada = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val formatoSalida = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+            val fecha = formatoEntrada.parse(fechaStr)
+            if (fecha != null) {
+                formatoSalida.format(fecha)
+            } else {
+                fechaStr // Si no se puede parsear, devolver la fecha original
+            }
+        } catch (e: Exception) {
+            fechaStr // Si hay error, devolver la fecha original
         }
     }
 

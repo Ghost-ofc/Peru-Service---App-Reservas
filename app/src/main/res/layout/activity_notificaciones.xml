@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- Header con título y contador -->
+    <LinearLayout
+        android:id="@+id/appBarLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical"
+        android:background="@color/color_surface"
+        android:elevation="4dp">
+
+        <!-- Ícono de notificaciones -->
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_notifications"
+            android:background="@drawable/circle_background_notification"
+            android:padding="12dp"
+            android:contentDescription="Notificaciones"
+            android:tint="#D32F2F" />
+
+        <!-- Título y contador -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:id="@+id/tvTitulo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notificaciones"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/color_text" />
+
+            <TextView
+                android:id="@+id/tvContador"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 sin leer"
+                android:textSize="14sp"
+                android:textColor="@color/color_text_muted"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- Botón cerrar -->
+        <ImageView
+            android:id="@+id/btnCerrar"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Cerrar"
+            android:tint="@color/color_text_muted"
+            android:padding="8dp" />
+    </LinearLayout>
+
+    <!-- Lista de notificaciones -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerNotificaciones"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        tools:listitem="@layout/item_notificacion" />
+
+    <!-- Footer con acción -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/color_surface"
+        android:elevation="8dp"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvMarcarTodas"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Marcar todas como leídas"
+            android:textSize="16sp"
+            android:textColor="#8B4230"
+            android:textAlignment="center"
+            android:padding="12dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center" />
+    </LinearLayout>
+
+</LinearLayout>
+

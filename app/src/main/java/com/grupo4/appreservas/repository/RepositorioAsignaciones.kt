@@ -12,6 +12,16 @@ class RepositorioAsignaciones(context: Context) {
         val fechaHoy = obtenerFechaHoy()
         return dbHelper.obtenerToursDelGuia(guiaId, fechaHoy)
     }
+    
+    /**
+     * Obtiene todos los tours asignados a un guía, ordenados por fecha ascendente.
+     * 
+     * @param guiaId ID del guía
+     * @return Lista de todos los tours del guía ordenados por fecha (ascendente)
+     */
+    fun obtenerTodosLosTours(guiaId: Int): List<Tour> {
+        return dbHelper.obtenerTodosLosToursDelGuia(guiaId)
+    }
 
     fun obtenerParticipantes(tourId: String): List<Reserva> {
         return dbHelper.obtenerReservasPorTour(tourId)
