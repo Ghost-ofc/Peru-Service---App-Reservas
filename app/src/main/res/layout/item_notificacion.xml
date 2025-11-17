@@ -1,182 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_marginBottom="8dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="2dp"
-    app:strokeWidth="0dp"
-    android:backgroundTint="@color/color_surface">
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <!-- Ícono según tipo -->
-        <ImageView
-            android:id="@+id/ivIcono"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_notifications"
-            android:background="@drawable/circle_background_notification"
-            android:padding="12dp"
-            android:contentDescription="Tipo de notificación"
-            tools:src="@drawable/ic_notifications" />
-
-        <!-- Contenido -->
+        <!-- Header con tipo y fecha -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="8dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
 
-            <!-- Título -->
             <TextView
-                android:id="@+id/tvTitulo"
-                android:layout_width="wrap_content"
+                android:id="@+id/txt_tipo"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Recordatorio de Tour"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/color_text"
-                tools:text="Recordatorio de Tour" />
-
-            <!-- Descripción -->
-            <TextView
-                android:id="@+id/tvDescripcion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tu tour 'Machu Picchu Clásico' es mañana a las 6:00 AM"
-                android:textSize="14sp"
-                android:textColor="@color/color_text"
-                android:layout_marginTop="4dp"
-                android:maxLines="3"
-                android:ellipsize="end"
-                tools:text="Tu tour 'Machu Picchu Clásico' es mañana a las 6:00 AM" />
-
-            <!-- Punto de encuentro (solo para recordatorios) -->
-            <LinearLayout
-                android:id="@+id/layoutPuntoEncuentro"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="8dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_location_pin"
-                    android:tint="@color/color_text_muted"
-                    android:contentDescription="Ubicación" />
-
-                <TextView
-                    android:id="@+id/tvPuntoEncuentro"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Plaza de Armas, Cusco"
-                    android:textSize="12sp"
-                    android:textColor="@color/color_text_muted"
-                    android:layout_marginStart="4dp"
-                    tools:text="Plaza de Armas, Cusco" />
-            </LinearLayout>
-
-            <!-- Recomendación (solo para alertas climáticas) -->
-            <LinearLayout
-                android:id="@+id/layoutRecomendacion"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFF3E0"
-                android:padding="8dp"
-                android:layout_marginTop="8dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@android:drawable/ic_dialog_alert"
-                    android:tint="#FF9800"
-                    android:contentDescription="Recomendación" />
-
-                <TextView
-                    android:id="@+id/tvRecomendacion"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Recomendación: Lleva ropa impermeable"
-                    android:textSize="12sp"
-                    android:textColor="#E65100"
-                    android:layout_marginStart="8dp"
-                    tools:text="Recomendación: Lleva ropa impermeable" />
-            </LinearLayout>
-
-            <!-- Descuento (solo para ofertas) -->
-            <LinearLayout
-                android:id="@+id/layoutDescuento"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/tvDescuento"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="30% OFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="@android:color/white"
-                    android:background="#4CAF50"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="4dp"
-                    android:layout_marginEnd="8dp"
-                    tools:text="30% OFF" />
-
-                <Button
-                    android:id="@+id/btnVerOferta"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Ver oferta"
-                    android:textSize="12sp"
-                    android:backgroundTint="#8B4230"
-                    android:textColor="@android:color/white"
-                    android:paddingHorizontal="16dp"
-                    android:paddingVertical="4dp"
-                    android:minHeight="0dp"
-                    tools:text="Ver oferta" />
-            </LinearLayout>
-
-            <!-- Timestamp -->
-            <TextView
-                android:id="@+id/tvTimestamp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Hace 2 horas"
+                android:layout_weight="1"
                 android:textSize="12sp"
-                android:textColor="@color/color_text_muted"
-                android:layout_marginTop="8dp"
-                tools:text="Hace 2 horas" />
+                android:textStyle="bold"
+                android:textColor="#8B4230"
+                android:background="@drawable/bg_chip_pendiente"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp" />
+
+            <TextView
+                android:id="@+id/txt_fecha"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
 
-        <!-- Indicador de no leída -->
-        <View
-            android:id="@+id/viewNoLeida"
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:background="@drawable/circle_blue"
+        <!-- Título -->
+        <TextView
+            android:id="@+id/txt_titulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Descripción -->
+        <TextView
+            android:id="@+id/txt_descripcion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Información adicional (solo para recordatorios) -->
+        <LinearLayout
+            android:id="@+id/layout_info_adicional"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:visibility="gone"
-            tools:visibility="visible" />
+            android:background="#F5F5F5"
+            android:padding="8dp"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/txt_hora_tour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:drawableStart="@drawable/ic_calendar"
+                android:drawablePadding="8dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/txt_punto_encuentro"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:drawableStart="@drawable/ic_location"
+                android:drawablePadding="8dp"
+                android:gravity="center_vertical" />
+        </LinearLayout>
+
+        <!-- Descuento (solo para ofertas) -->
+        <TextView
+            android:id="@+id/txt_descuento"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#4CAF50"
+            android:visibility="gone"
+            android:layout_marginTop="4dp" />
+
+        <!-- Recomendaciones (solo para alertas climáticas) -->
+        <TextView
+            android:id="@+id/txt_recomendaciones"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone"
+            android:background="#FFF3E0"
+            android:padding="8dp"
+            android:layout_marginTop="4dp" />
+
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>
-

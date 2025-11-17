@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/color_surface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
     app:strokeWidth="1dp"
     app:strokeColor="@color/color_outline">
 
@@ -16,18 +15,18 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:gravity="center_vertical"
-        android:minHeight="72dp">
+        android:gravity="center_vertical">
 
         <!-- Icono del logro -->
         <ImageView
-            android:id="@+id/ivIconoLogro"
+            android:id="@+id/ivIcono"
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:src="@android:drawable/btn_star_big_on"
-            android:background="@drawable/circle_yellow"
+            android:background="@drawable/circle_blue"
             android:padding="14dp"
-            android:tint="@android:color/white" />
+            android:tint="@android:color/white"
+            android:alpha="0.5" />
 
         <!-- Información del logro -->
         <LinearLayout
@@ -38,30 +37,32 @@
             android:layout_marginStart="16dp">
 
             <TextView
-                android:id="@+id/tvNombreLogro"
+                android:id="@+id/txtNombre"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Primer Viaje"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/color_text" />
 
             <TextView
-                android:id="@+id/tvDescripcionLogro"
+                android:id="@+id/txtDescripcion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Completaste tu primera reserva"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textColor="@color/color_text_muted"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
 
-        <!-- Estado del logro (checkmark verde circular si está desbloqueado) -->
-        <ImageView
-            android:id="@+id/ivEstadoLogro"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:src="@drawable/circle_green_check"
+        <!-- Badge de desbloqueado -->
+        <TextView
+            android:id="@+id/txtDesbloqueado"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✓"
+            android:textSize="20sp"
+            android:textColor="#4CAF50"
             android:visibility="gone" />
+
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+
+</com.google.android.material.card.MaterialCardView>

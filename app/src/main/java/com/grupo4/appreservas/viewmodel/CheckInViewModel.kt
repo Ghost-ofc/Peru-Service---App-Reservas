@@ -1,47 +1,81 @@
 package com.grupo4.appreservas.viewmodel
 
-import android.content.Context
-import com.grupo4.appreservas.modelos.Reserva
-import com.grupo4.appreservas.repository.RepositorioCheckIn
-import com.grupo4.appreservas.repository.RepositorioQR
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
-class CheckInViewModel(context: Context) {
-    private val repositorioQR = RepositorioQR(context)
-    private val repositorioCheckIn = RepositorioCheckIn(context)
+/**
+ * ViewModel para gestionar el check-in mediante escaneo QR.
+ * Equivalente a CheckInViewModel del diagrama UML.
+ */
+class CheckInViewModel(application: Application) : AndroidViewModel(application) {
 
-    fun procesarEscaneoQR(codigo: String, tourId: String): ResultadoEscaneo {
-        // Validar que el código existe
-        val reserva = repositorioQR.obtenerReserva(codigo)
-            ?: return ResultadoEscaneo.Error("QR no válido o no existe")
+    private val repository: PeruvianServiceRepository = PeruvianServiceRepository.getInstance(application)
 
-        // Validar que pertenece al tour correcto
-        if (reserva.tourId != tourId) {
-            return ResultadoEscaneo.Error("Este QR no pertenece a este tour")
+    private val _resultadoEscaneo = MutableLiveData<String>()
+    val resultadoEscaneo: LiveData<String> = _resultadoEscaneo
+
+    private val _error = MutableLiveData<String>()
+    val error: LiveData<String> = _error
+
+    /**
+     * Procesa el escaneo de un código QR.
+     * Equivalente a procesarEscaneoQR(codigoReserva, tourId) del diagrama UML.
+     */
+    fun procesarEscaneoQR(codigoReserva: String, tourId: String, guiaId: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    // Validar el QR
+                    if (!repository.validarQR(codigoReserva)) {
+                        _resultadoEscaneo.postValue("QR no válido o ya registrado")
+                        return@withContext
+                    }
+
+                    // Obtener el ID de la reserva
+                    val reservaId = repository.obtenerReservaId(codigoReserva)
+                    if (reservaId.isEmpty()) {
+                        _resultadoEscaneo.postValue("QR no válido o ya registrado")
+                        return@withContext
+                    }
+
+                    // Verificar que la reserva pertenece al tour
+                    if (!repository.perteneceATour(reservaId, tourId)) {
+                        _resultadoEscaneo.postValue("QR no válido o ya registrado")
+                        return@withContext
+                    }
+
+                    // Verificar si ya fue usado
+                    if (repository.estaUsado(codigoReserva)) {
+                        _resultadoEscaneo.postValue("QR no válido o ya registrado")
+                        return@withContext
+                    }
+
+                    // Registrar el check-in
+                    val horaActual = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                    val exito = repository.registrarCheckIn(reservaId, guiaId, horaActual)
+
+                    if (exito) {
+                        // Marcar como usado
+                        repository.marcarUsado(codigoReserva)
+                        _resultadoEscaneo.postValue("Asistencia confirmada")
+                    } else {
+                        _resultadoEscaneo.postValue("Error al registrar asistencia")
+                    }
+                } catch (e: Exception) {
+                    _error.postValue("Error al procesar QR: ${e.message}")
+                    _resultadoEscaneo.postValue("Error al procesar QR")
+                }
+            }
         }
-
-        // Validar que no esté ya usado
-        if (repositorioQR.estaUsado(codigo)) {
-            return ResultadoEscaneo.Error("QR no válido o ya registrado")
-        }
-
-        // Marcar como usado
-        repositorioQR.marcarUsado(codigo)
-
-        // Registrar check-in
-        val horaActual = obtenerHoraActual()
-        val guiaId = 1 // Obtener del contexto de sesión
-        repositorioCheckIn.registrar(reserva.reservaId, guiaId, horaActual)
-
-        return ResultadoEscaneo.Exito(reserva)
-    }
-
-    private fun obtenerHoraActual(): String {
-        val formato = java.text.SimpleDateFormat("HH:mm a", java.util.Locale.getDefault())
-        return formato.format(java.util.Date())
-    }
-
-    sealed class ResultadoEscaneo {
-        data class Exito(val reserva: Reserva) : ResultadoEscaneo()
-        data class Error(val mensaje: String) : ResultadoEscaneo()
     }
 }
+

@@ -36,4 +36,4 @@ data class Recibo(
     val montoTotal: Double,
     val metodoPago: String,
     val horaInicio: String
-)
+) : java.io.Serializable

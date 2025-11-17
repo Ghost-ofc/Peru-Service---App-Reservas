@@ -7,22 +7,20 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.controller.ControlAuth
-import com.grupo4.appreservas.service.RolesService
-import com.grupo4.appreservas.service.UsuariosService
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
+import com.grupo4.appreservas.viewmodel.AutenticacionViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Activity de Registro según el diagrama UML.
- * Equivalente a RegistroActivity del diagrama.
- * 
- * En arquitectura MVC, esta Activity (Vista) usa el ControlAuth (Controller)
- * para manejar la lógica de registro.
+ * Activity para registro de usuarios.
+ * Corresponde a la HU: Registro según mi rol.
  */
 class RegistroActivity : AppCompatActivity() {
 
-    private lateinit var controlAuth: ControlAuth
-
+    private lateinit var viewModel: AutenticacionViewModel
     private lateinit var etNombre: EditText
     private lateinit var etCorreo: EditText
     private lateinit var etContrasena: EditText
@@ -35,14 +33,20 @@ class RegistroActivity : AppCompatActivity() {
 
         inicializarDependencias()
         inicializarVistas()
-        mostrarFormulario()
+        configurarListeners()
     }
 
     private fun inicializarDependencias() {
-        // Inicializar servicios y controlador según arquitectura MVC
-        val usuariosService = UsuariosService(this)
-        val rolesService = RolesService(this)
-        controlAuth = ControlAuth(usuariosService, rolesService)
+        val repository = PeruvianServiceRepository.getInstance(this)
+        viewModel = ViewModelProvider(this, AutenticacionViewModelFactory(repository))[AutenticacionViewModel::class.java]
+
+        // Observar cambios en el usuario registrado
+        viewModel.usuario.observe(this) { usuario ->
+            if (usuario != null) {
+                mostrarConfirmacion("Cuenta creada exitosamente")
+                redirigirSegunRol(usuario)
+            }
+        }
     }
 
     private fun inicializarVistas() {
@@ -53,64 +57,69 @@ class RegistroActivity : AppCompatActivity() {
         tvIniciarSesion = findViewById(R.id.tv_iniciar_sesion)
     }
 
-    /**
-     * Muestra el formulario de registro.
-     * Equivalente a mostrarFormulario() del diagrama UML.
-     */
-    private fun mostrarFormulario() {
+    private fun configurarListeners() {
         btnCrearCuenta.setOnClickListener {
-            enviarDatos()
+            registrar()
         }
 
         tvIniciarSesion.setOnClickListener {
-            finish() // Volver al login
+            abrirLogin()
         }
     }
 
-    /**
-     * Envía los datos del formulario para registro.
-     * Equivalente a enviarDatos(nombre, correo, contrasena, rol) del diagrama UML.
-     */
-    private fun enviarDatos() {
+    private fun registrar() {
         val nombre = etNombre.text.toString().trim()
         val correo = etCorreo.text.toString().trim()
         val contrasena = etContrasena.text.toString()
-        val rol = 2 // Siempre Turista para registro público
 
-        // Usar ControlAuth para registrar usuario (patrón MVC)
-        val resultado = controlAuth.registrar(nombre, correo, contrasena, rol)
+        if (nombre.isEmpty() || correo.isEmpty() || contrasena.isEmpty()) {
+            mostrarError("Por favor, completa todos los campos")
+            return
+        }
 
-        when (resultado) {
-            is ControlAuth.ResultadoAuth.Exito -> {
-                val usuario = resultado.usuario
-                mostrarConfirmacion("Cuenta creada exitosamente")
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+            mostrarError("Por favor, ingresa un correo válido")
+            return
+        }
 
-                // Redirigir al catálogo después del registro
-                val intent = Intent(this, CatalogoActivity::class.java)
-                intent.putExtra("USUARIO_ID", usuario.usuarioId)
-                intent.putExtra("ROL_ID", usuario.rolId)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
-            }
-            is ControlAuth.ResultadoAuth.Error -> {
-                mostrarError(resultado.mensaje)
+        if (contrasena.length < 6) {
+            mostrarError("La contraseña debe tener al menos 6 caracteres")
+            return
+        }
+
+        // El registro solo es para turistas (rolId = 2)
+        val rolId = 2 // Turista
+
+        lifecycleScope.launch {
+            try {
+                viewModel.registrar(nombre, correo, contrasena, rolId)
+            } catch (e: Exception) {
+                mostrarError("Error al crear la cuenta: ${e.message}")
             }
         }
     }
 
-    /**
-     * Muestra un mensaje de confirmación.
-     * Equivalente a mostrarConfirmacion(mensaje) del diagrama UML.
-     */
+    private fun redirigirSegunRol(usuario: com.grupo4.appreservas.modelos.Usuario) {
+        val intent = Intent(this, PanelPrincipalActivity::class.java)
+        intent.putExtra("USUARIO_ID", usuario.usuarioId)
+        intent.putExtra("ROL_ID", usuario.rolId)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+
+    private fun abrirLogin() {
+        val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
     private fun mostrarConfirmacion(mensaje: String) {
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }
 
-    /**
-     * Muestra un mensaje de error.
-     */
     private fun mostrarError(mensaje: String) {
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }
 }
+

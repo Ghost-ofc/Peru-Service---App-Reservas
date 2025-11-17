@@ -3,8 +3,6 @@ package com.grupo4.appreservas.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -13,16 +11,19 @@ import com.grupo4.appreservas.modelos.Notificacion
 import com.grupo4.appreservas.modelos.TipoNotificacion
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.abs
 
-/**
- * Adapter para mostrar notificaciones en un RecyclerView.
- */
 class NotificacionesAdapter(
-    private val notificaciones: List<Notificacion>,
     private val onItemClick: (Notificacion) -> Unit,
-    private val onVerOfertaClick: ((Notificacion) -> Unit)? = null
+    private val onMarcarLeida: (String) -> Unit
 ) : RecyclerView.Adapter<NotificacionesAdapter.NotificacionViewHolder>() {
+
+    private var notificaciones = listOf<Notificacion>()
+    private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
+    fun actualizarLista(nuevaLista: List<Notificacion>) {
+        notificaciones = nuevaLista
+        notifyDataSetChanged()
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotificacionViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -34,110 +35,97 @@ class NotificacionesAdapter(
         holder.bind(notificaciones[position])
     }
 
-    override fun getItemCount(): Int = notificaciones.size
+    override fun getItemCount() = notificaciones.size
 
     inner class NotificacionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val ivIcono: ImageView = itemView.findViewById(R.id.ivIcono)
-        private val tvTitulo: TextView = itemView.findViewById(R.id.tvTitulo)
-        private val tvDescripcion: TextView = itemView.findViewById(R.id.tvDescripcion)
-        private val tvPuntoEncuentro: TextView = itemView.findViewById(R.id.tvPuntoEncuentro)
-        private val layoutPuntoEncuentro: LinearLayout = itemView.findViewById(R.id.layoutPuntoEncuentro)
-        private val tvRecomendacion: TextView = itemView.findViewById(R.id.tvRecomendacion)
-        private val layoutRecomendacion: LinearLayout = itemView.findViewById(R.id.layoutRecomendacion)
-        private val tvDescuento: TextView = itemView.findViewById(R.id.tvDescuento)
-        private val layoutDescuento: LinearLayout = itemView.findViewById(R.id.layoutDescuento)
-        private val btnVerOferta: Button = itemView.findViewById(R.id.btnVerOferta)
-        private val tvTimestamp: TextView = itemView.findViewById(R.id.tvTimestamp)
-        private val viewNoLeida: View = itemView.findViewById(R.id.viewNoLeida)
+        
+        private val txtTipo: TextView = itemView.findViewById(R.id.txt_tipo)
+        private val txtFecha: TextView = itemView.findViewById(R.id.txt_fecha)
+        private val txtTitulo: TextView = itemView.findViewById(R.id.txt_titulo)
+        private val txtDescripcion: TextView = itemView.findViewById(R.id.txt_descripcion)
+        private val layoutInfoAdicional: LinearLayout = itemView.findViewById(R.id.layout_info_adicional)
+        private val txtHoraTour: TextView = itemView.findViewById(R.id.txt_hora_tour)
+        private val txtPuntoEncuentro: TextView = itemView.findViewById(R.id.txt_punto_encuentro)
+        private val txtDescuento: TextView = itemView.findViewById(R.id.txt_descuento)
+        private val txtRecomendaciones: TextView = itemView.findViewById(R.id.txt_recomendaciones)
 
         fun bind(notificacion: Notificacion) {
-            // Configurar ícono según el tipo
-            val (iconRes, iconColor) = when (notificacion.tipo) {
-                TipoNotificacion.RECORDATORIO -> Pair(
-                    android.R.drawable.ic_menu_recent_history,
-                    "#2196F3" // Azul
-                )
-                TipoNotificacion.ALERTA_CLIMATICA -> Pair(
-                    android.R.drawable.ic_dialog_alert,
-                    "#FF9800" // Naranja
-                )
-                TipoNotificacion.CLIMA_FAVORABLE -> Pair(
-                    android.R.drawable.ic_dialog_info,
-                    "#FF9800" // Naranja
-                )
-                TipoNotificacion.OFERTA_ULTIMO_MINUTO -> Pair(
-                    android.R.drawable.ic_menu_view,
-                    "#4CAF50" // Verde
-                )
-                TipoNotificacion.CONFIRMACION_RESERVA -> Pair(
-                    android.R.drawable.ic_menu_recent_history,
-                    "#2196F3" // Azul
-                )
+            // Tipo de notificación
+            txtTipo.text = notificacion.tipo.valor
+            
+            // Fecha
+            txtFecha.text = dateFormat.format(notificacion.fechaCreacion)
+            
+            // Título y descripción
+            txtTitulo.text = notificacion.titulo
+            txtDescripcion.text = notificacion.descripcion
+            
+            // Configurar según el tipo
+            when (notificacion.tipo) {
+                TipoNotificacion.RECORDATORIO -> {
+                    layoutInfoAdicional.visibility = View.VISIBLE
+                    txtDescuento.visibility = View.GONE
+                    txtRecomendaciones.visibility = View.GONE
+                    
+                    notificacion.horaTour?.let {
+                        txtHoraTour.text = "Hora: $it"
+                        txtHoraTour.visibility = View.VISIBLE
+                    } ?: run {
+                        txtHoraTour.visibility = View.GONE
+                    }
+                    
+                    notificacion.puntoEncuentro?.let {
+                        txtPuntoEncuentro.text = "Punto de encuentro: $it"
+                        txtPuntoEncuentro.visibility = View.VISIBLE
+                    } ?: run {
+                        txtPuntoEncuentro.visibility = View.GONE
+                    }
+                }
+                
+                TipoNotificacion.ALERTA_CLIMATICA -> {
+                    layoutInfoAdicional.visibility = View.GONE
+                    txtDescuento.visibility = View.GONE
+                    
+                    notificacion.recomendaciones?.let {
+                        txtRecomendaciones.text = "Recomendaciones: $it"
+                        txtRecomendaciones.visibility = View.VISIBLE
+                    } ?: run {
+                        txtRecomendaciones.visibility = View.GONE
+                    }
+                }
+                
+                TipoNotificacion.OFERTA_ULTIMO_MINUTO -> {
+                    layoutInfoAdicional.visibility = View.GONE
+                    txtRecomendaciones.visibility = View.GONE
+                    
+                    notificacion.descuento?.let {
+                        txtDescuento.text = "Descuento: $it%"
+                        txtDescuento.visibility = View.VISIBLE
+                    } ?: run {
+                        txtDescuento.visibility = View.GONE
+                    }
+                }
+                
+                else -> {
+                    layoutInfoAdicional.visibility = View.GONE
+                    txtDescuento.visibility = View.GONE
+                    txtRecomendaciones.visibility = View.GONE
+                }
             }
             
-            ivIcono.setImageResource(iconRes)
-            ivIcono.setColorFilter(android.graphics.Color.parseColor(iconColor))
-
-            // Configurar título y descripción
-            tvTitulo.text = notificacion.titulo
-            tvDescripcion.text = notificacion.descripcion
-
-            // Mostrar punto de encuentro solo para recordatorios
-            if (notificacion.tipo == TipoNotificacion.RECORDATORIO && !notificacion.puntoEncuentro.isNullOrEmpty()) {
-                layoutPuntoEncuentro.visibility = View.VISIBLE
-                tvPuntoEncuentro.text = "Punto de encuentro: ${notificacion.puntoEncuentro}"
+            // Cambiar color de fondo si está leída
+            if (notificacion.leida) {
+                itemView.alpha = 0.6f
             } else {
-                layoutPuntoEncuentro.visibility = View.GONE
+                itemView.alpha = 1.0f
             }
-
-            // Mostrar recomendación solo para alertas climáticas
-            if (notificacion.esAlertaClimatica() && !notificacion.recomendaciones.isNullOrEmpty()) {
-                layoutRecomendacion.visibility = View.VISIBLE
-                tvRecomendacion.text = "Recomendación: ${notificacion.recomendaciones}"
-            } else {
-                layoutRecomendacion.visibility = View.GONE
-            }
-
-            // Mostrar descuento solo para ofertas
-            if (notificacion.esOferta() && notificacion.descuento != null) {
-                layoutDescuento.visibility = View.VISIBLE
-                tvDescuento.text = "${notificacion.descuento}% OFF"
-                btnVerOferta.setOnClickListener {
-                    onVerOfertaClick?.invoke(notificacion)
-                }
-            } else {
-                layoutDescuento.visibility = View.GONE
-            }
-
-            // Mostrar timestamp relativo
-            tvTimestamp.text = obtenerTimestampRelativo(notificacion.fechaCreacion)
-
-            // Mostrar indicador de no leída
-            viewNoLeida.visibility = if (!notificacion.leida) View.VISIBLE else View.GONE
-
+            
             // Click en el item
             itemView.setOnClickListener {
-                onItemClick(notificacion)
-            }
-        }
-
-        private fun obtenerTimestampRelativo(fecha: Date): String {
-            val ahora = Date()
-            val diferencia = ahora.time - fecha.time
-            val segundos = diferencia / 1000
-            val minutos = segundos / 60
-            val horas = minutos / 60
-            val dias = horas / 24
-
-            return when {
-                minutos < 1 -> "Hace unos momentos"
-                minutos < 60 -> "Hace $minutos ${if (minutos == 1L) "minuto" else "minutos"}"
-                horas < 24 -> "Hace $horas ${if (horas == 1L) "hora" else "horas"}"
-                dias < 7 -> "Hace $dias ${if (dias == 1L) "día" else "días"}"
-                else -> {
-                    val formato = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    formato.format(fecha)
+                if (!notificacion.leida) {
+                    onMarcarLeida(notificacion.id)
                 }
+                onItemClick(notificacion)
             }
         }
     }

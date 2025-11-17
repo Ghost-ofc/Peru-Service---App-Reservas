@@ -4,50 +4,47 @@ import com.grupo4.appreservas.modelos.EstadoPago
 import com.grupo4.appreservas.modelos.MetodoPago
 import com.grupo4.appreservas.modelos.Pago
 import kotlinx.coroutines.delay
-import java.util.Date
+import java.util.*
 
 /**
- * PaymentGateway maneja la comunicación con la pasarela de pagos externa.
- * Según el diagrama UML, este componente se encarga de realizar el cargo real.
- * 
- * En producción, esta clase se conectaría a una API real de pasarela de pagos
- * (como Stripe, PayPal, o una pasarela local como Culqi, Niubiz, etc.).
+ * Gateway de pago que simula la comunicación con pasarelas de pago externas.
+ * Equivalente a PaymentGateway del diagrama UML.
  */
 class PaymentGateway {
 
     /**
-     * Realiza el cargo con la pasarela de pagos externa.
+     * Procesa un cargo a través de la pasarela de pago.
      * Equivalente a charge(req): Payment del diagrama UML.
-     * 
-     * @param req Mapa con los datos de la transacción (bookingId, monto, metodoPago)
-     * @return Pago con el resultado de la transacción
      */
-    suspend fun charge(req: Map<String, Any>): Pago {
-        val bookingId = req["bookingId"] as String
-        val monto = req["monto"] as Double
-        val metodoPago = req["metodoPago"] as? MetodoPago
-            ?: throw IllegalArgumentException("Método de pago no especificado")
+    suspend fun charge(request: Map<String, Any>): Pago {
+        // Simular delay de red
+        delay(1000)
 
-        // Simular comunicación con pasarela externa
-        // En producción, aquí se haría una llamada HTTP a la API de la pasarela
-        val delayTime = when (metodoPago) {
-            MetodoPago.YAPE, MetodoPago.PLIN -> 1500L // Billeteras digitales: más rápido
-            MetodoPago.TARJETA -> 2000L // Tarjeta: requiere más validación
+        val bookingId = request["bookingId"] as? String ?: ""
+        val monto = request["monto"] as? Double ?: 0.0
+        val metodoPago = request["metodoPago"] as? MetodoPago ?: MetodoPago.TARJETA
+
+        // Simular éxito o fallo (90% éxito, 10% fallo para pruebas)
+        val exito = Math.random() > 0.1
+
+        val estado = if (exito) {
+            EstadoPago.APROBADO
+        } else {
+            EstadoPago.RECHAZADO
         }
 
-        delay(delayTime)
-
-        // Simular respuesta de la pasarela
-        // En producción, aquí se procesaría la respuesta real de la API
-        // Por ahora, simulamos que todos los pagos son aprobados
-        val transaccionId = "TXN${System.currentTimeMillis()}"
+        val transaccionId = if (exito) {
+            "TXN_${System.currentTimeMillis()}"
+        } else {
+            ""
+        }
 
         return Pago(
-            id = "", // El ID se generará en el repository
+            id = "",
             bookingId = bookingId,
             monto = monto,
             metodoPago = metodoPago,
-            estado = EstadoPago.APROBADO, // En producción, esto vendría de la respuesta de la pasarela
+            estado = estado,
             fecha = Date(),
             transaccionId = transaccionId
         )
