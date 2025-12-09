@@ -12,6 +12,7 @@ import com.google.android.material.card.MaterialCardView
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.controller.PaymentController
 import com.grupo4.appreservas.modelos.MetodoPago
+import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import com.grupo4.appreservas.service.PaymentGateway
@@ -218,6 +219,8 @@ class PaymentActivity : AppCompatActivity() {
     private fun abrirVoucher(comprobante: com.grupo4.appreservas.modelos.Recibo) {
         val intent = android.content.Intent(this, VoucherActivity::class.java)
         intent.putExtra("COMPROBANTE", comprobante)
+        intent.putExtra("USUARIO_ID", reserva.usuarioId)
+        intent.putExtra("PUNTOS_GANADOS", PuntosUsuario.PUNTOS_POR_RESERVA)
         startActivity(intent)
         finish()
     }

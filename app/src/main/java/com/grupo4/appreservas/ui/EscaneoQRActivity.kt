@@ -11,6 +11,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import com.grupo4.appreservas.R
+import com.grupo4.appreservas.modelos.CheckIn
 import com.grupo4.appreservas.viewmodel.CheckInViewModel
 import com.journeyapps.barcodescanner.BarcodeCallback
 import com.journeyapps.barcodescanner.BarcodeResult
@@ -93,36 +94,27 @@ class EscaneoQRActivity : AppCompatActivity() {
 
     /**
      * Envía el código QR escaneado para procesamiento.
-     * Equivalente a enviarCodigoQR(codigoReserva) del diagrama UML.
+     * Equivalente a enviarCodigoQRLeido(codigoQR) del diagrama UML.
      */
-    private fun enviarCodigoQR(codigoReserva: String) {
+    private fun enviarCodigoQR(codigoQR: String) {
         barcodeView.pause()
-        viewModel.procesarEscaneoQR(codigoReserva, tourId, usuarioId)
+        viewModel.procesarEscaneoQR(codigoQR, tourId, usuarioId)
     }
 
     private fun observarViewModel() {
-        viewModel.resultadoEscaneo.observe(this) { resultado ->
-            resultado?.let {
-                mostrarResultado(it)
-                
-                // Si el resultado es exitoso, esperar un momento y volver
-                if (it == "Asistencia confirmada") {
-                    barcodeView.postDelayed({
-                        finish()
-                    }, 2000)
-                } else {
-                    // Si hay error, permitir escanear de nuevo después de un momento
-                    barcodeView.postDelayed({
-                        escaneoCompletado = false
-                        barcodeView.resume()
-                    }, 3000)
-                }
+        viewModel.resultadoCheckin.observe(this) { checkIn ->
+            if (checkIn != null) {
+                mostrarResultadoCheckin(checkIn)
+                // Esperar un momento y volver
+                barcodeView.postDelayed({
+                    finish()
+                }, 2000)
             }
         }
 
-        viewModel.error.observe(this) { errorMessage ->
-            errorMessage?.let {
-                mostrarResultado("Error: $it")
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            mensaje?.let {
+                mostrarMensajeError(it)
                 // Permitir escanear de nuevo después de un momento
                 barcodeView.postDelayed({
                     escaneoCompletado = false
@@ -133,24 +125,23 @@ class EscaneoQRActivity : AppCompatActivity() {
     }
 
     /**
-     * Muestra el resultado del escaneo.
-     * Equivalente a mostrarResultado(mensaje) del diagrama UML.
+     * Muestra el resultado del check-in.
+     * Equivalente a mostrarResultadoCheckin(checkin) del diagrama UML.
      */
-    private fun mostrarResultado(mensaje: String) {
+    private fun mostrarResultadoCheckin(checkIn: CheckIn) {
+        tvResultado.text = "Asistencia confirmada\nReserva: ${checkIn.reservaId}\nHora: ${checkIn.horaRegistro}"
+        tvResultado.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+        Toast.makeText(this, "Check-in registrado exitosamente", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Muestra un mensaje de error.
+     * Equivalente a mostrarMensajeError(mensaje) del diagrama UML.
+     */
+    private fun mostrarMensajeError(mensaje: String) {
         tvResultado.text = mensaje
-        
-        // Cambiar color según el resultado
-        when {
-            mensaje == "Asistencia confirmada" -> {
-                tvResultado.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-            }
-            mensaje.contains("no válido") || mensaje.contains("ya registrado") -> {
-                tvResultado.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-            }
-            else -> {
-                tvResultado.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark))
-            }
-        }
+        tvResultado.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+        Toast.makeText(this, mensaje, Toast.LENGTH_LONG).show()
     }
 
     override fun onRequestPermissionsResult(

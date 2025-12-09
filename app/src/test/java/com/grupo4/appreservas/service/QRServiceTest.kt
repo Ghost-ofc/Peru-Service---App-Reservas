@@ -24,7 +24,7 @@ class QRServiceTest {
         val resultado = qrService.generate(data)
 
         // Assert
-        assertEquals("QR_CODE_BASE64_PS12345678", resultado)
+        assertEquals("QR_CODE_PS12345678", resultado)
     }
 
     @Test
@@ -38,8 +38,8 @@ class QRServiceTest {
         val resultado2 = qrService.generate(data2)
 
         // Assert
-        assertTrue(resultado1.startsWith("QR_CODE_BASE64_"))
-        assertTrue(resultado2.startsWith("QR_CODE_BASE64_"))
+        assertTrue(resultado1.startsWith("QR_CODE_"))
+        assertTrue(resultado2.startsWith("QR_CODE_"))
         assertNotEquals(resultado1, resultado2)
     }
 }

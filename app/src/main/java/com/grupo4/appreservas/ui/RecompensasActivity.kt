@@ -19,7 +19,8 @@ import com.grupo4.appreservas.viewmodel.RecompensasViewModel
 
 /**
  * Activity para mostrar las recompensas (puntos y logros) del usuario.
- * Equivalente a RecompensasActivity del diagrama UML.
+ * Equivalente a PerfilUsuarioActivity del diagrama UML.
+ * Incluye funcionalidad de PerfilActivity según el diagrama.
  */
 class RecompensasActivity : AppCompatActivity() {
 
@@ -110,6 +111,14 @@ class RecompensasActivity : AppCompatActivity() {
             mostrarLogros(logros)
         }
 
+        viewModel.toursCompletados.observe(this) { cantidad ->
+            tvToursCompletados.text = cantidad.toString()
+        }
+
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            // El mensaje de estado se puede usar para mostrar notificaciones si es necesario
+        }
+
         viewModel.error.observe(this) { errorMessage ->
             errorMessage?.let {
                 Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
@@ -118,13 +127,35 @@ class RecompensasActivity : AppCompatActivity() {
     }
 
     private fun cargarDatos() {
-        viewModel.cargarPuntos(usuarioId)
-        viewModel.cargarLogros(usuarioId)
-        
-        // Cargar estadísticas
+        abrirPerfil(usuarioId)
+    }
+
+    /**
+     * Abre el perfil de un usuario.
+     * Equivalente a abrirPerfil(usuariold) del diagrama UML.
+     */
+    private fun abrirPerfil(usuarioId: Int) {
+        viewModel.cargarResumenPuntosYLogros(usuarioId)
+    }
+
+    /**
+     * Abre el álbum de un tour.
+     * Equivalente a abrirAlbum(idTour) del diagrama UML (PerfilActivity).
+     */
+    private fun abrirAlbum(idTour: String) {
         val repository = PeruvianServiceRepository.getInstance(this)
-        val reservasConfirmadas = repository.obtenerReservasConfirmadas(usuarioId)
-        tvToursCompletados.text = reservasConfirmadas.size.toString()
+        val reserva = repository.buscarReservaPorId(idTour)
+        val tour = reserva?.let { repository.obtenerTourPorId(it.tourId) }
+        
+        if (tour != null) {
+            val intent = Intent(this, AlbumTourActivity::class.java)
+            intent.putExtra("TOUR_ID", tour.tourId)
+            intent.putExtra("TOUR_NOMBRE", tour.nombre)
+            intent.putExtra("USUARIO_ID", usuarioId)
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "No se pudo abrir el álbum del tour", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /**

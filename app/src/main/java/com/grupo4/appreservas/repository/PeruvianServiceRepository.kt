@@ -4,8 +4,10 @@ import android.content.Context
 import com.grupo4.appreservas.modelos.CheckIn
 import com.grupo4.appreservas.modelos.Clima
 import com.grupo4.appreservas.modelos.Destino
+import com.grupo4.appreservas.modelos.EncuestaRespuesta
 import com.grupo4.appreservas.modelos.Logro
 import com.grupo4.appreservas.modelos.Notificacion
+import com.grupo4.appreservas.modelos.TipoNotificacion
 import com.grupo4.appreservas.modelos.Pago
 import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.modelos.Reserva
@@ -281,17 +283,27 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
 
     /**
      * Crea un nuevo usuario.
-     * Equivalente a crearUsuario(datos, rol): Usuario del diagrama UML.
-     * El rol se asigna aquí según el diagrama.
+     * Equivalente a crearUsuario(nombreCompleto, nombreUsuario, contrasena, rolOpcional): Usuario del diagrama UML.
+     * Si no viene un rol en el body, le asigna el rol por defecto que es el de turista.
+     * 
+     * @param nombreCompleto El nombre completo del usuario
+     * @param nombreUsuario El nombre de usuario (correo electrónico en este sistema)
+     * @param contrasena La contraseña sin hashear
+     * @param rolOpcional El rol opcional. Si es null, se asigna el rol por defecto (turista = 2)
+     * @return El usuario creado con su ID asignado
      */
-    fun crearUsuario(nombre: String, correo: String, contrasena: String, rolId: Int): Usuario {
+    fun crearUsuario(nombreCompleto: String, nombreUsuario: String, contrasena: String, rolOpcional: Int? = null): Usuario {
+        // Si no viene un rol, asignar el rol por defecto (turista = 2)
+        val rolId = rolOpcional ?: 2
+        
         // Hashear la contraseña con SHA-256
         val contrasenaHash = hashSHA256(contrasena)
 
         // Crear el usuario
+        // Nota: En este sistema, nombreUsuario se almacena como correo
         val usuario = Usuario(
-            nombreCompleto = nombre,
-            correo = correo,
+            nombreCompleto = nombreCompleto,
+            correo = nombreUsuario, // nombreUsuario se almacena como correo
             contrasena = contrasenaHash,
             rolId = rolId,
             fechaCreacion = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
@@ -306,10 +318,15 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
 
     /**
      * Valida las credenciales de un usuario.
-     * Equivalente a validarCredenciales(correo, contrasena): Usuario del diagrama UML.
+     * Equivalente a validarCredenciales(nombreUsuario, contrasena): Usuario del diagrama UML.
+     * 
+     * @param nombreUsuario El nombre de usuario (correo electrónico en este sistema)
+     * @param contrasena La contraseña sin hashear
+     * @return El usuario si las credenciales son válidas, null en caso contrario
      */
-    fun validarCredenciales(correo: String, contrasena: String): Usuario? {
-        val usuario = dbHelper.buscarUsuarioPorCorreo(correo) ?: return null
+    fun validarCredenciales(nombreUsuario: String, contrasena: String): Usuario? {
+        // Buscar usuario por correo (nombreUsuario se almacena como correo)
+        val usuario = dbHelper.buscarUsuarioPorCorreo(nombreUsuario) ?: return null
 
         // Hashear la contraseña ingresada y comparar
         val contrasenaHash = hashSHA256(contrasena)
@@ -365,94 +382,86 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
     }
 
     /**
-     * Valida un código QR de reserva.
-     * Equivalente a validarQR(codigoReserva): Boolean del diagrama UML.
-     * Nota: Cambié el nombre del argumento según el diagrama.
-     */
-    fun validarQR(codigoReserva: String): Boolean {
-        // Buscar la reserva por código QR o por ID
-        val reservaPorQR = dbHelper.obtenerReservaPorQR(codigoReserva)
-        val reservaPorId = dbHelper.obtenerReservaPorId(codigoReserva)
-        
-        return reservaPorQR != null || reservaPorId != null
-    }
-
-    /**
-     * Obtiene el ID de reserva a partir del código QR.
-     * Equivalente a obtenerReservaId(codigoReserva): String del diagrama UML.
-     */
-    fun obtenerReservaId(codigoReserva: String): String {
-        // Primero intentar buscar por código QR
-        val reservaPorQR = dbHelper.obtenerReservaPorQR(codigoReserva)
-        if (reservaPorQR != null) {
-            return reservaPorQR.reservaId
-        }
-        
-        // Si no se encuentra, intentar buscar por ID directamente
-        val reservaPorId = dbHelper.obtenerReservaPorId(codigoReserva)
-        if (reservaPorId != null) {
-            return reservaPorId.reservaId
-        }
-        
-        return ""
-    }
-
-    /**
-     * Verifica si una reserva pertenece a un tour específico.
-     * Equivalente a perteneceATour(reservaId, tourId): Boolean del diagrama UML.
-     */
-    fun perteneceATour(reservaId: String, tourId: String): Boolean {
-        val reserva = dbHelper.obtenerReservaPorId(reservaId) ?: return false
-        return reserva.tourId == tourId
-    }
-
-    /**
-     * Verifica si un código QR ya fue usado.
-     * Equivalente a estaUsado(codigoReserva): Boolean del diagrama UML.
-     * Nota: Cambié el nombre del argumento según el diagrama.
-     */
-    fun estaUsado(codigoReserva: String): Boolean {
-        return dbHelper.estaReservaUsada(codigoReserva)
-    }
-
-    /**
-     * Marca un código QR como usado.
-     * Equivalente a marcarUsado(codigoReserva): void del diagrama UML.
-     * Nota: Cambié el nombre del argumento según el diagrama.
+     * Valida un código QR de reserva y verifica que pertenezca al tour especificado.
+     * Equivalente a validarCodigoQR(codigoQR, idTour): Reserva del diagrama UML.
      * 
-     * En realidad, el código se marca como usado cuando se registra el check-in,
-     * pero este método puede ser útil para marcar explícitamente.
+     * @param codigoQR El código QR escaneado
+     * @param idTour El ID del tour al que debe pertenecer la reserva
+     * @return La Reserva si es válida y pertenece al tour, null en caso contrario
      */
-    fun marcarUsado(codigoReserva: String) {
-        // El código se marca como usado automáticamente al registrar el check-in
-        // Este método existe para cumplir con el diagrama UML
-        // No necesita hacer nada adicional porque el check-in ya marca la reserva como usada
+    fun validarCodigoQR(codigoQR: String, idTour: String): Reserva? {
+        // Buscar la reserva por código QR o por ID
+        val reservaPorQR = dbHelper.obtenerReservaPorQR(codigoQR)
+        val reservaPorId = dbHelper.obtenerReservaPorId(codigoQR)
+        
+        val reserva = reservaPorQR ?: reservaPorId
+        
+        // Verificar que la reserva existe y pertenece al tour
+        if (reserva != null && reserva.tourId == idTour) {
+            // Verificar que el código QR no haya sido usado ya
+            if (!dbHelper.estaReservaUsada(codigoQR)) {
+                return reserva
+            }
+        }
+        
+        return null
     }
+
 
     /**
      * Registra un check-in para una reserva.
-     * Equivalente a registrarCheckIn(reservaId, guiaId, hora): Boolean del diagrama UML.
+     * Equivalente a registrarCheckIn(idReserva, idGuia, fechaHora): Checkin del diagrama UML.
+     * 
+     * @param idReserva El ID de la reserva
+     * @param idGuia El ID del guía que realiza el check-in
+     * @param fechaHora La fecha y hora del check-in
+     * @return El objeto CheckIn registrado, o null si hubo un error
      */
-    fun registrarCheckIn(reservaId: String, guiaId: Int, hora: String): Boolean {
+    fun registrarCheckIn(idReserva: String, idGuia: Int, fechaHora: String): CheckIn? {
         val checkIn = CheckIn(
-            reservaId = reservaId,
-            guiaId = guiaId,
-            horaRegistro = hora,
+            reservaId = idReserva,
+            guiaId = idGuia,
+            horaRegistro = fechaHora,
             estado = "Confirmado"
         )
         
         val resultado = dbHelper.registrarCheckIn(checkIn)
-        return resultado > 0
+        return if (resultado > 0) {
+            // Obtener el check-in registrado con su ID
+            val checkInRegistrado = dbHelper.obtenerCheckInPorReserva(idReserva)
+            checkInRegistrado ?: checkIn.copy(checkInId = resultado.toInt())
+        } else {
+            null
+        }
     }
 
     // ============= MÉTODOS PARA NOTIFICACIONES (según diagrama UML) =============
 
     /**
-     * Obtiene los recordatorios/notificaciones de un usuario.
-     * Equivalente a obtenerRecordatorios(usuarioId): List<Notification> del diagrama UML.
+     * Obtiene los recordatorios de un usuario.
+     * Equivalente a obtenerRecordatorios(usuarioId): List<Notificacion> del diagrama UML.
      */
     fun obtenerRecordatorios(usuarioId: Int): List<Notificacion> {
         return dbHelper.obtenerNotificacionesPorUsuario(usuarioId)
+            .filter { it.tipo == TipoNotificacion.RECORDATORIO }
+    }
+
+    /**
+     * Obtiene las alertas climáticas de un usuario.
+     * Equivalente a obtenerAlertasClimaticas(usuarioId): List<Notificacion> del diagrama UML.
+     */
+    fun obtenerAlertasClimaticas(usuarioId: Int): List<Notificacion> {
+        return dbHelper.obtenerNotificacionesPorUsuario(usuarioId)
+            .filter { it.tipo == TipoNotificacion.ALERTA_CLIMATICA || it.tipo == TipoNotificacion.CLIMA_FAVORABLE }
+    }
+
+    /**
+     * Obtiene las ofertas de último minuto de un usuario.
+     * Equivalente a obtenerOfertasUltimoMinuto(usuarioId): List<Notificacion> del diagrama UML.
+     */
+    fun obtenerOfertasUltimoMinuto(usuarioId: Int): List<Notificacion> {
+        return dbHelper.obtenerNotificacionesPorUsuario(usuarioId)
+            .filter { it.tipo == TipoNotificacion.OFERTA_ULTIMO_MINUTO }
     }
 
     /**
@@ -608,19 +617,28 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
 
     /**
      * Obtiene los puntos acumulados de un usuario.
-     * Equivalente a obtenerPuntos(usuarioId): Int del diagrama UML.
+     * Equivalente a obtenerPuntosUsuario(usuariold): Int del diagrama UML.
      */
-    fun obtenerPuntos(usuarioId: Int): Int {
+    fun obtenerPuntosUsuario(usuarioId: Int): Int {
         // Inicializar puntos si no existen
         dbHelper.inicializarPuntos(usuarioId)
         return dbHelper.obtenerPuntos(usuarioId)
     }
 
     /**
-     * Obtiene los logros de un usuario.
-     * Equivalente a obtenerLogros(usuarioId): List<Logro> del diagrama UML.
+     * Obtiene los puntos acumulados de un usuario (método de compatibilidad).
+     * @deprecated Usar obtenerPuntosUsuario en su lugar
      */
-    fun obtenerLogros(usuarioId: Int): List<Logro> {
+    @Deprecated("Usar obtenerPuntosUsuario", ReplaceWith("obtenerPuntosUsuario(usuarioId)"))
+    fun obtenerPuntos(usuarioId: Int): Int {
+        return obtenerPuntosUsuario(usuarioId)
+    }
+
+    /**
+     * Obtiene los logros de un usuario.
+     * Equivalente a obtenerLogrosUsuario(usuariold): List<Logro> del diagrama UML.
+     */
+    fun obtenerLogrosUsuario(usuarioId: Int): List<Logro> {
         val logros = dbHelper.obtenerLogros(usuarioId)
         
         // Si el usuario no tiene logros, inicializar los logros base
@@ -633,12 +651,30 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
     }
 
     /**
-     * Obtiene las reservas confirmadas de un usuario.
-     * Equivalente a obtenerReservasConfirmadas(usuarioId): List<Reserva> del diagrama UML.
+     * Obtiene los logros de un usuario (método de compatibilidad).
+     * @deprecated Usar obtenerLogrosUsuario en su lugar
      */
-    fun obtenerReservasConfirmadas(usuarioId: Int): List<Reserva> {
+    @Deprecated("Usar obtenerLogrosUsuario", ReplaceWith("obtenerLogrosUsuario(usuarioId)"))
+    fun obtenerLogros(usuarioId: Int): List<Logro> {
+        return obtenerLogrosUsuario(usuarioId)
+    }
+
+    /**
+     * Obtiene las reservas completadas de un usuario.
+     * Equivalente a obtenerReservasCompletadas(usuariold): List<Reserva> del diagrama UML.
+     */
+    fun obtenerReservasCompletadas(usuarioId: Int): List<Reserva> {
         return dbHelper.obtenerReservasPorUsuario(usuarioId)
             .filter { it.estaConfirmado() }
+    }
+
+    /**
+     * Obtiene las reservas confirmadas de un usuario (método de compatibilidad).
+     * @deprecated Usar obtenerReservasCompletadas en su lugar
+     */
+    @Deprecated("Usar obtenerReservasCompletadas", ReplaceWith("obtenerReservasCompletadas(usuarioId)"))
+    fun obtenerReservasConfirmadas(usuarioId: Int): List<Reserva> {
+        return obtenerReservasCompletadas(usuarioId)
     }
 
     /**
@@ -662,21 +698,21 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
      * Verifica y desbloquea logros según los criterios del usuario.
      */
     private fun verificarYDesbloquearLogros(usuarioId: Int) {
-        val reservasConfirmadas = obtenerReservasConfirmadas(usuarioId)
-        val puntosActuales = obtenerPuntos(usuarioId)
+        val reservasCompletadas = obtenerReservasCompletadas(usuarioId)
+        val puntosActuales = obtenerPuntosUsuario(usuarioId)
         
         // Verificar logro "Primer Viaje"
-        if (reservasConfirmadas.size == 1) {
+        if (reservasCompletadas.size == 1) {
             desbloquearLogro(usuarioId, "PRIMER_VIAJE")
         }
         
         // Verificar logro "Viajero Frecuente" (5+ reservas)
-        if (reservasConfirmadas.size >= 5) {
+        if (reservasCompletadas.size >= 5) {
             desbloquearLogro(usuarioId, "VIAJERO_FRECUENTE")
         }
         
         // Verificar logro por tours completados (10+ reservas)
-        if (reservasConfirmadas.size >= 10) {
+        if (reservasCompletadas.size >= 10) {
             desbloquearLogro(usuarioId, "TOURS_10")
         }
         
@@ -740,7 +776,7 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
                 desbloqueado = true
             )
             "PUNTOS_500" -> {
-                val puntos = obtenerPuntos(usuarioId)
+                val puntos = obtenerPuntosUsuario(usuarioId)
                 if (puntos >= 500) {
                     Logro(
                         id = logroId,
@@ -760,7 +796,7 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
                 }
             }
             "PUNTOS_1000" -> {
-                val puntos = obtenerPuntos(usuarioId)
+                val puntos = obtenerPuntosUsuario(usuarioId)
                 if (puntos >= 1000) {
                     Logro(
                         id = logroId,
@@ -783,6 +819,131 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
         }
         
         dbHelper.insertarLogroParaUsuario(usuarioId, logro)
+    }
+
+    // ============= MÉTODOS PARA FOTOS DEL ÁLBUM (HU-008) =============
+
+    /**
+     * Obtiene las fotos aprobadas de un tour.
+     * Equivalente a obtenerFotosPorTour(idTour): List<Foto> del diagrama UML.
+     */
+    fun obtenerFotosPorTour(idTour: String): List<com.grupo4.appreservas.modelos.Foto> {
+        return dbHelper.obtenerFotosPorTour(idTour)
+    }
+
+    /**
+     * Guarda una lista de fotos para un tour.
+     * Equivalente a guardarFotosDeTour(idTour, listaFotos): Boolean del diagrama UML.
+     */
+    fun guardarFotosDeTour(idTour: String, listaFotos: List<com.grupo4.appreservas.modelos.Foto>): Boolean {
+        return try {
+            listaFotos.forEach { foto ->
+                dbHelper.insertarFoto(foto)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    // ============= MÉTODOS PARA ENCUESTAS DE SATISFACCIÓN (HU-009) =============
+
+    /**
+     * Envía una encuesta automática al usuario después de finalizar un tour.
+     * Equivalente a enviarEncuestaAutomatica(idTour, usuarioId): Boolean del diagrama UML.
+     */
+    fun enviarEncuestaAutomatica(idTour: String, usuarioId: Int): Boolean {
+        return try {
+            // Verificar que el usuario no haya respondido ya la encuesta
+            if (dbHelper.existeEncuestaRespuesta(idTour, usuarioId.toString())) {
+                return false // Ya respondió
+            }
+
+            // Obtener información del tour
+            val tour = obtenerTourPorId(idTour)
+            val nombreTour = tour?.nombre ?: "Tour"
+
+            // Crear notificación de encuesta
+            crearNotificacionEncuesta(usuarioId, idTour, nombreTour)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Guarda la respuesta de una encuesta.
+     * Equivalente a guardarRespuestaEncuesta(idTour, usuarioId, calificacion, comentario): EncuestaRespuesta del diagrama UML.
+     */
+    fun guardarRespuestaEncuesta(idTour: String, usuarioId: Int, calificacion: Int, comentario: String): EncuestaRespuesta? {
+        return try {
+            // Validar calificación
+            if (calificacion !in 1..5) {
+                return null
+            }
+
+            // Verificar que no exista ya una respuesta
+            val usuarioIdStr = usuarioId.toString()
+            if (dbHelper.existeEncuestaRespuesta(idTour, usuarioIdStr)) {
+                return null // Ya respondió
+            }
+
+            // Crear respuesta de encuesta
+            val puntosOtorgados = 50 // Puntos por completar encuesta
+            val encuesta = EncuestaRespuesta(
+                idRespuesta = "ENC_${idTour}_${usuarioId}_${System.currentTimeMillis()}",
+                idTour = idTour,
+                usuarioId = usuarioIdStr,
+                calificacion = calificacion,
+                comentario = comentario,
+                fechaRespuesta = Date(),
+                puntosOtorgados = puntosOtorgados
+            )
+
+            // Guardar en la base de datos
+            val resultado = dbHelper.insertarEncuestaRespuesta(encuesta)
+            
+            if (resultado > 0) {
+                // Sumar puntos por completar encuesta
+                dbHelper.sumarPuntos(usuarioId, puntosOtorgados)
+                encuesta
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Crea una notificación de encuesta de satisfacción.
+     */
+    private fun crearNotificacionEncuesta(usuarioId: Int, tourId: String, nombreTour: String) {
+        val notificacion = Notificacion(
+            id = "ENCUESTA_${tourId}_${usuarioId}_${System.currentTimeMillis()}",
+            usuarioId = usuarioId,
+            tipo = TipoNotificacion.ENCUESTA_SATISFACCION,
+            titulo = "Encuesta de Satisfacción",
+            descripcion = "¡Cuéntanos sobre tu experiencia en $nombreTour!",
+            fechaCreacion = Date(),
+            tourId = tourId,
+            destinoNombre = nombreTour
+        )
+        dbHelper.insertarNotificacion(notificacion)
+    }
+
+    /**
+     * Obtiene la calificación promedio de un tour.
+     */
+    fun obtenerCalificacionPromedioTour(tourId: String): Double {
+        return dbHelper.obtenerCalificacionPromedioTour(tourId)
+    }
+
+    /**
+     * Verifica si un usuario ya respondió una encuesta para un tour.
+     */
+    fun yaRespondioEncuesta(tourId: String, usuarioId: Int): Boolean {
+        return dbHelper.existeEncuestaRespuesta(tourId, usuarioId.toString())
     }
 
     /**

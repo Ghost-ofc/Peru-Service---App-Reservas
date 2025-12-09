@@ -59,7 +59,7 @@ class NotificacionesActivity : AppCompatActivity() {
     private fun configurarRecyclerView() {
         notificacionesAdapter = NotificacionesAdapter(
             onItemClick = { notificacion ->
-                mostrarDetalleNotificacion(notificacion)
+                seleccionarNotificacion(notificacion.id)
             },
             onMarcarLeida = { notificacionId ->
                 viewModel.marcarComoLeida(notificacionId)
@@ -83,9 +83,17 @@ class NotificacionesActivity : AppCompatActivity() {
     }
 
     private fun observarViewModel() {
-        viewModel.recordatorios.observe(this) { notificaciones ->
-            mostrarNotificaciones(notificaciones)
+        viewModel.notificaciones.observe(this) { notificaciones ->
+            mostrarListaNotificaciones(notificaciones)
             actualizarContador(notificaciones)
+        }
+
+        viewModel.recordatorios.observe(this) { notificaciones ->
+            // Actualizar cuando cambian los recordatorios
+            viewModel.notificaciones.value?.let { todas ->
+                mostrarListaNotificaciones(todas)
+                actualizarContador(todas)
+            }
         }
 
         viewModel.error.observe(this) { errorMessage ->
@@ -95,8 +103,26 @@ class NotificacionesActivity : AppCompatActivity() {
         }
     }
 
-    private fun cargarNotificaciones() {
+    /**
+     * Carga las notificaciones del usuario.
+     * Equivalente a cargarNotificaciones(usuarioId) del diagrama UML.
+     */
+    private fun cargarNotificaciones(usuarioId: Int) {
         viewModel.cargarRecordatoriosUsuario(usuarioId)
+        viewModel.cargarAlertasClimaticas(usuarioId)
+        viewModel.cargarOfertasUltimoMinuto(usuarioId)
+    }
+
+    private fun cargarNotificaciones() {
+        cargarNotificaciones(usuarioId)
+    }
+
+    /**
+     * Muestra la lista de notificaciones.
+     * Equivalente a mostrarListaNotificaciones(listaNotificaciones) del diagrama UML.
+     */
+    private fun mostrarListaNotificaciones(listaNotificaciones: List<Notificacion>) {
+        notificacionesAdapter.actualizarLista(listaNotificaciones)
     }
 
     /**
@@ -104,7 +130,32 @@ class NotificacionesActivity : AppCompatActivity() {
      * Equivalente a mostrarNotificaciones() del diagrama UML.
      */
     private fun mostrarNotificaciones(notificaciones: List<Notificacion>) {
-        notificacionesAdapter.actualizarLista(notificaciones)
+        mostrarListaNotificaciones(notificaciones)
+    }
+
+    /**
+     * Selecciona una notificación por su ID.
+     * Equivalente a seleccionarNotificacion(idNotificacion) del diagrama UML.
+     */
+    private fun seleccionarNotificacion(idNotificacion: String) {
+        val notificacion = viewModel.recordatorios.value?.find { it.id == idNotificacion }
+            ?: viewModel.notificaciones.value?.find { it.id == idNotificacion }
+        
+        notificacion?.let {
+            mostrarDetalleNotificacion(it)
+        }
+    }
+
+    /**
+     * Abre la encuesta para un tour específico.
+     * Equivalente a abrirEncuesta(idTour) del diagrama UML.
+     */
+    private fun abrirEncuesta(idTour: String) {
+        val intent = Intent(this, EncuestaActivity::class.java).apply {
+            putExtra("TOUR_ID", idTour)
+            putExtra("USUARIO_ID", usuarioId)
+        }
+        startActivity(intent)
     }
 
     /**
@@ -112,6 +163,12 @@ class NotificacionesActivity : AppCompatActivity() {
      * Equivalente a mostrarDetalleNotificacion(notificacion) del diagrama UML.
      */
     private fun mostrarDetalleNotificacion(notificacion: Notificacion) {
+        // Si es una notificación de encuesta, abrir la EncuestaActivity
+        if (notificacion.tipo == com.grupo4.appreservas.modelos.TipoNotificacion.ENCUESTA_SATISFACCION && notificacion.tourId != null) {
+            abrirEncuesta(notificacion.tourId)
+            return
+        }
+
         // Por ahora solo mostrar un Toast con la descripción completa
         val mensaje = when (notificacion.tipo) {
             com.grupo4.appreservas.modelos.TipoNotificacion.RECORDATORIO -> {

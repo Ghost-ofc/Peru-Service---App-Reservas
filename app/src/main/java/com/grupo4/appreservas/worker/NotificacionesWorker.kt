@@ -35,6 +35,9 @@ class NotificacionesWorker(
 
                 // 3. Generar ofertas de último minuto
                 generarOfertasUltimoMinuto(usuario.usuarioId)
+
+                // 4. Enviar encuestas automáticas para tours finalizados (HU-009)
+                generarEncuestasAutomaticas(usuario.usuarioId)
             }
 
             Result.success()
@@ -182,6 +185,63 @@ class NotificacionesWorker(
                     }
                 notificacion?.let {
                     notificacionesService.mostrarNotificacion(it, usuarioId)
+                }
+            }
+        }
+    }
+
+    /**
+     * Genera encuestas automáticas para tours que han finalizado (HU-009).
+     * Se envía la encuesta 1 hora después de que finaliza el tour.
+     */
+    private fun generarEncuestasAutomaticas(usuarioId: Int) {
+        // Obtener reservas confirmadas del usuario
+        val reservas = repository.obtenerReservasPorUsuario(usuarioId)
+        val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val ahora = Calendar.getInstance()
+
+        for (reserva in reservas) {
+            if (reserva.estaConfirmado() && reserva.tourId.isNotEmpty()) {
+                val tour = repository.obtenerTourPorId(reserva.tourId)
+                tour?.let {
+                    // Verificar si el tour fue ayer o antes (ya finalizó)
+                    val fechaTour = try {
+                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(it.fecha)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    
+                    if (fechaTour != null) {
+                        val fechaHoyDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(fechaHoy)
+                        if (fechaHoyDate != null && fechaTour.before(fechaHoyDate)) {
+                            // El tour ya finalizó, verificar si ya se envió la encuesta
+                            val notificaciones = repository.obtenerRecordatorios(usuarioId)
+                            val yaExisteEncuesta = notificaciones.any {
+                                it.tourId == reserva.tourId &&
+                                it.tipo == TipoNotificacion.ENCUESTA_SATISFACCION
+                            }
+                            
+                            // Verificar si el usuario ya respondió
+                            val yaRespondio = repository.yaRespondioEncuesta(reserva.tourId, usuarioId)
+                            
+                            if (!yaExisteEncuesta && !yaRespondio) {
+                                // Enviar encuesta automática
+                                val exito = repository.enviarEncuestaAutomatica(reserva.tourId, usuarioId)
+                                
+                                if (exito) {
+                                    // Enviar notificación push
+                                    val notificacion = repository.obtenerRecordatorios(usuarioId)
+                                        .firstOrNull {
+                                            it.tourId == reserva.tourId &&
+                                            it.tipo == TipoNotificacion.ENCUESTA_SATISFACCION
+                                        }
+                                    notificacion?.let { notif ->
+                                        notificacionesService.mostrarNotificacion(notif, usuarioId)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

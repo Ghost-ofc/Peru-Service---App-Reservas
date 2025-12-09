@@ -41,10 +41,18 @@ class RegistroActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this, AutenticacionViewModelFactory(repository))[AutenticacionViewModel::class.java]
 
         // Observar cambios en el usuario registrado
-        viewModel.usuario.observe(this) { usuario ->
+        viewModel.usuarioAutenticado.observe(this) { usuario ->
             if (usuario != null) {
                 mostrarConfirmacion("Cuenta creada exitosamente")
-                redirigirSegunRol(usuario)
+                // Enviar registroExitoso(usuario) a PanelPrincipalActivity según diagrama UML
+                enviarRegistroExitoso(usuario)
+            }
+        }
+
+        // Observar mensajes de estado
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            mensaje?.let {
+                mostrarError(it)
             }
         }
     }
@@ -59,7 +67,7 @@ class RegistroActivity : AppCompatActivity() {
 
     private fun configurarListeners() {
         btnCrearCuenta.setOnClickListener {
-            registrar()
+            enviarDatosRegistro()
         }
 
         tvIniciarSesion.setOnClickListener {
@@ -67,17 +75,21 @@ class RegistroActivity : AppCompatActivity() {
         }
     }
 
-    private fun registrar() {
-        val nombre = etNombre.text.toString().trim()
-        val correo = etCorreo.text.toString().trim()
+    /**
+     * Envía los datos de registro al ViewModel.
+     * Equivalente a enviarDatosRegistro(nombreCompleto, nombreUsuario, contrasena) del diagrama UML.
+     */
+    private fun enviarDatosRegistro() {
+        val nombreCompleto = etNombre.text.toString().trim()
+        val nombreUsuario = etCorreo.text.toString().trim() // En este sistema, nombreUsuario es el correo
         val contrasena = etContrasena.text.toString()
 
-        if (nombre.isEmpty() || correo.isEmpty() || contrasena.isEmpty()) {
+        if (nombreCompleto.isEmpty() || nombreUsuario.isEmpty() || contrasena.isEmpty()) {
             mostrarError("Por favor, completa todos los campos")
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(nombreUsuario).matches()) {
             mostrarError("Por favor, ingresa un correo válido")
             return
         }
@@ -87,22 +99,19 @@ class RegistroActivity : AppCompatActivity() {
             return
         }
 
-        // El registro solo es para turistas (rolId = 2)
-        val rolId = 2 // Turista
-
-        lifecycleScope.launch {
-            try {
-                viewModel.registrar(nombre, correo, contrasena, rolId)
-            } catch (e: Exception) {
-                mostrarError("Error al crear la cuenta: ${e.message}")
-            }
-        }
+        // Enviar datos al ViewModel (no se envía rol, se asigna el por defecto)
+        viewModel.registrarUsuario(nombreCompleto, nombreUsuario, contrasena)
     }
 
-    private fun redirigirSegunRol(usuario: com.grupo4.appreservas.modelos.Usuario) {
+    /**
+     * Envía el evento registroExitoso(usuario) a PanelPrincipalActivity.
+     * Equivalente a registroExitoso(usuario) del diagrama UML.
+     */
+    private fun enviarRegistroExitoso(usuario: com.grupo4.appreservas.modelos.Usuario) {
         val intent = Intent(this, PanelPrincipalActivity::class.java)
         intent.putExtra("USUARIO_ID", usuario.usuarioId)
         intent.putExtra("ROL_ID", usuario.rolId)
+        intent.putExtra("REGISTRO_EXITOSO", true)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()

@@ -55,41 +55,36 @@ class IntegracionNotificacionesTest {
         application = mockk(relaxed = true)
         every { application.applicationContext } returns context
 
-        // Mock DatabaseHelper
+        // Mock DatabaseHelper - IMPORTANTE: configurar mocks ANTES de instanciar el repositorio
         mockkConstructor(DatabaseHelper::class)
+        // Mockear métodos que acceden a la base de datos para evitar errores
+        // Estos mocks por defecto se pueden sobrescribir en cada test
+        every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(any()) } returns emptyList()
+        every { anyConstructed<DatabaseHelper>().marcarNotificacionComoLeida(any()) } returns true
 
+        // Instanciar repositorio DESPUÉS de configurar todos los mocks
         repository = PeruvianServiceRepository.getInstance(context)
-        viewModel = NotificacionesViewModel(application)
+        // El ViewModel se instanciará en cada test después de configurar los mocks específicos si es necesario
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
         clearAllMocks()
+        // Resetear la instancia singleton del repositorio para cada test
+        val field = PeruvianServiceRepository::class.java.getDeclaredField("instance")
+        field.isAccessible = true
+        field.set(null, null)
     }
 
     @Test
-    fun `test HU-006 Escenario 1 - Recordatorio de horario se genera correctamente`() = runTest {
+    fun `test HU-006 Escenario 1 - Recordatorio de horario se genera correctamente`() {
         // Arrange: Crear una reserva confirmada con tour próximo a iniciar
         val fechaTour = Calendar.getInstance().apply {
             time = Date()
             add(Calendar.HOUR_OF_DAY, 2) // Tour en 2 horas
         }.time
-
-        val reserva = Reserva(
-            id = "BK12345678",
-            userId = usuarioId.toString(),
-            usuarioId = usuarioId,
-            destinoId = destinoId,
-            tourId = tourId,
-            fecha = fechaTour,
-            horaInicio = "08:00",
-            numPersonas = 2,
-            precioTotal = 900.0,
-            estado = EstadoReserva.CONFIRMADO,
-            nombreTurista = "Usuario Test",
-            documento = "test@example.com"
-        )
 
         val tour = Tour(
             tourId = tourId,
@@ -102,11 +97,8 @@ class IntegracionNotificacionesTest {
             estado = "Pendiente"
         )
 
-        // Mock: Obtener reservas del usuario
-        every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
-        every { anyConstructed<DatabaseHelper>().obtenerTourPorId(tourId) } returns tour
+        // Mock: Insertar notificación
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
-        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
 
         // Act: Crear notificación de recordatorio
         repository.crearNotificacionRecordatorio(
@@ -122,12 +114,11 @@ class IntegracionNotificacionesTest {
     }
 
     @Test
-    fun `test HU-006 Escenario 2 - Alerta climática se genera cuando hay cambio de clima`() = runTest {
+    fun `test HU-006 Escenario 2 - Alerta climática se genera cuando hay cambio de clima`() {
         // Arrange: Configurar detección de cambio climático
         val ubicacion = "Cusco"
         
-        // Mock: Detectar cambio climático (retorna true)
-        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
+        // Mock: Insertar notificación
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
 
         // Act: Crear notificación de alerta climática
@@ -143,7 +134,7 @@ class IntegracionNotificacionesTest {
     }
 
     @Test
-    fun `test HU-006 Escenario 3 - Oferta de último minuto se genera para tours con baja ocupación`() = runTest {
+    fun `test HU-006 Escenario 3 - Oferta de último minuto se genera para tours con baja ocupación`() {
         // Arrange: Tour con baja ocupación
         val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val tour = Tour(
@@ -159,27 +150,24 @@ class IntegracionNotificacionesTest {
 
         // Mock: Obtener tours con descuento
         every { anyConstructed<DatabaseHelper>().obtenerTodosLosTours() } returns listOf(tour)
-        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
 
         // Act: Obtener tours con descuento y crear notificación
         val toursConDescuento = repository.obtenerToursConDescuento()
         
-        if (toursConDescuento.isNotEmpty()) {
-            repository.crearNotificacionOferta(
-                usuarioId,
-                tourId,
-                tour.nombre,
-                20 // 20% descuento
-            )
-        }
-
-        // Assert: Verificar que se encontraron tours con descuento
         assertTrue(toursConDescuento.isNotEmpty())
         assertEquals(tourId, toursConDescuento.first().tourId)
         
-        // Verificar que se creó la notificación
-        verify(atLeast = 0) { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) }
+        // Crear notificación de oferta
+        repository.crearNotificacionOferta(
+            usuarioId,
+            tourId,
+            tour.nombre,
+            20 // 20% descuento
+        )
+
+        // Assert: Verificar que se creó la notificación
+        verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) }
     }
 
     @Test
@@ -211,6 +199,9 @@ class IntegracionNotificacionesTest {
         // Mock: Obtener notificaciones
         every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns notificaciones
 
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = NotificacionesViewModel(application)
+
         // Observador
         val recordatoriosObserver = mockk<Observer<List<Notificacion>>>(relaxed = true)
         viewModel.recordatorios.observeForever(recordatoriosObserver)
@@ -232,6 +223,9 @@ class IntegracionNotificacionesTest {
 
         // Mock: Detectar cambio climático
         every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = NotificacionesViewModel(application)
 
         // Observador
         val recordatoriosObserver = mockk<Observer<List<Notificacion>>>(relaxed = true)
@@ -277,6 +271,9 @@ class IntegracionNotificacionesTest {
         every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
 
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = NotificacionesViewModel(application)
+
         // Observador
         val recordatoriosObserver = mockk<Observer<List<Notificacion>>>(relaxed = true)
         viewModel.recordatorios.observeForever(recordatoriosObserver)
@@ -288,6 +285,9 @@ class IntegracionNotificacionesTest {
         // Assert: Verificar que se obtuvieron tours con descuento
         val toursConDescuento = repository.obtenerToursConDescuento()
         assertTrue(toursConDescuento.size >= 2)
+        
+        // Verificar que se crearon notificaciones
+        verify(atLeast = 2) { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) }
     }
 
     @Test
@@ -309,6 +309,9 @@ class IntegracionNotificacionesTest {
             notificacion.copy(leida = true)
         )
 
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = NotificacionesViewModel(application)
+
         // Observador
         val recordatoriosObserver = mockk<Observer<List<Notificacion>>>(relaxed = true)
         viewModel.recordatorios.observeForever(recordatoriosObserver)
@@ -322,27 +325,12 @@ class IntegracionNotificacionesTest {
     }
 
     @Test
-    fun `test flujo completo de notificaciones desde reserva hasta notificación`() = runTest {
+    fun `test flujo completo de notificaciones desde reserva hasta notificación`() {
         // Arrange: Reserva confirmada
         val fechaTour = Calendar.getInstance().apply {
             time = Date()
             add(Calendar.HOUR_OF_DAY, 2)
         }.time
-
-        val reserva = Reserva(
-            id = "BK12345678",
-            userId = usuarioId.toString(),
-            usuarioId = usuarioId,
-            destinoId = destinoId,
-            tourId = tourId,
-            fecha = fechaTour,
-            horaInicio = "08:00",
-            numPersonas = 2,
-            precioTotal = 900.0,
-            estado = EstadoReserva.CONFIRMADO,
-            nombreTurista = "Usuario Test",
-            documento = "test@example.com"
-        )
 
         val tour = Tour(
             tourId = tourId,
@@ -356,8 +344,6 @@ class IntegracionNotificacionesTest {
         )
 
         // Mock
-        every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
-        every { anyConstructed<DatabaseHelper>().obtenerTourPorId(tourId) } returns tour
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
         every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
 
@@ -371,11 +357,12 @@ class IntegracionNotificacionesTest {
         )
 
         // Assert: Verificar flujo completo
-        verify { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) }
+        verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) }
         
         // Verificar que se puede cargar la notificación
         val notificaciones = repository.obtenerRecordatorios(usuarioId)
         // Nota: Como estamos usando mocks, las notificaciones no se persisten realmente
         // pero verificamos que el flujo se ejecuta correctamente
+        assertNotNull(notificaciones)
     }
 }

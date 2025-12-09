@@ -19,6 +19,9 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
 
     private val repository: PeruvianServiceRepository = PeruvianServiceRepository.getInstance(application)
 
+    private val _notificaciones = MutableLiveData<List<Notificacion>>()
+    val notificaciones: LiveData<List<Notificacion>> = _notificaciones
+
     private val _recordatorios = MutableLiveData<List<Notificacion>>()
     val recordatorios: LiveData<List<Notificacion>> = _recordatorios
 
@@ -26,20 +29,77 @@ class NotificacionesViewModel(application: Application) : AndroidViewModel(appli
     val error: LiveData<String> = _error
 
     /**
-     * Carga los recordatorios/notificaciones del usuario.
+     * Carga los recordatorios del usuario.
      * Equivalente a cargarRecordatoriosUsuario(usuarioId) del diagrama UML.
      */
     fun cargarRecordatoriosUsuario(usuarioId: Int) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val notificaciones = repository.obtenerRecordatorios(usuarioId)
-                    _recordatorios.postValue(notificaciones)
+                    val recordatorios = repository.obtenerRecordatorios(usuarioId)
+                    _recordatorios.postValue(recordatorios)
+                    // Actualizar lista completa de notificaciones
+                    actualizarListaCompleta(usuarioId)
                 } catch (e: Exception) {
-                    _error.postValue("Error al cargar notificaciones: ${e.message}")
+                    _error.postValue("Error al cargar recordatorios: ${e.message}")
                 }
             }
         }
+    }
+
+    /**
+     * Carga las alertas climáticas del usuario.
+     * Equivalente a cargarAlertasClimaticas(usuarioId) del diagrama UML.
+     */
+    fun cargarAlertasClimaticas(usuarioId: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val alertas = repository.obtenerAlertasClimaticas(usuarioId)
+                    // Actualizar lista completa de notificaciones
+                    actualizarListaCompleta(usuarioId)
+                } catch (e: Exception) {
+                    _error.postValue("Error al cargar alertas climáticas: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Carga las ofertas de último minuto del usuario.
+     * Equivalente a cargarOfertasUltimoMinuto(usuarioId) del diagrama UML.
+     */
+    fun cargarOfertasUltimoMinuto(usuarioId: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val ofertas = repository.obtenerOfertasUltimoMinuto(usuarioId)
+                    // Actualizar lista completa de notificaciones
+                    actualizarListaCompleta(usuarioId)
+                } catch (e: Exception) {
+                    _error.postValue("Error al cargar ofertas: ${e.message}")
+                }
+            }
+        }
+    }
+
+    /**
+     * Actualiza la lista completa de notificaciones combinando todos los tipos.
+     */
+    private fun actualizarListaCompleta(usuarioId: Int) {
+        val todasLasNotificaciones = mutableListOf<Notificacion>()
+        todasLasNotificaciones.addAll(repository.obtenerRecordatorios(usuarioId))
+        todasLasNotificaciones.addAll(repository.obtenerAlertasClimaticas(usuarioId))
+        todasLasNotificaciones.addAll(repository.obtenerOfertasUltimoMinuto(usuarioId))
+        // Agregar otras notificaciones (encuestas, etc.)
+        val otrasNotificaciones = repository.obtenerNotificacionesNoLeidasPorUsuario(usuarioId)
+            .filter { it.tipo != com.grupo4.appreservas.modelos.TipoNotificacion.RECORDATORIO &&
+                      it.tipo != com.grupo4.appreservas.modelos.TipoNotificacion.ALERTA_CLIMATICA &&
+                      it.tipo != com.grupo4.appreservas.modelos.TipoNotificacion.CLIMA_FAVORABLE &&
+                      it.tipo != com.grupo4.appreservas.modelos.TipoNotificacion.OFERTA_ULTIMO_MINUTO }
+        todasLasNotificaciones.addAll(otrasNotificaciones)
+        // Ordenar por fecha de creación (más recientes primero)
+        _notificaciones.postValue(todasLasNotificaciones.sortedByDescending { it.fechaCreacion })
     }
 
     /**

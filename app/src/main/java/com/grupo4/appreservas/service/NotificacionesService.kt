@@ -44,9 +44,18 @@ class NotificacionesService(private val context: Context) {
      * Muestra una notificación push.
      */
     fun mostrarNotificacion(notificacion: Notificacion, usuarioId: Int) {
-        val intent = Intent(context, NotificacionesActivity::class.java).apply {
-            putExtra("USUARIO_ID", usuarioId)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        // Si es una notificación de encuesta, abrir directamente la EncuestaActivity
+        val intent = if (notificacion.tipo == com.grupo4.appreservas.modelos.TipoNotificacion.ENCUESTA_SATISFACCION && notificacion.tourId != null) {
+            Intent(context, com.grupo4.appreservas.ui.EncuestaActivity::class.java).apply {
+                putExtra("TOUR_ID", notificacion.tourId)
+                putExtra("USUARIO_ID", usuarioId)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+        } else {
+            Intent(context, NotificacionesActivity::class.java).apply {
+                putExtra("USUARIO_ID", usuarioId)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -90,6 +99,15 @@ class NotificacionesService(private val context: Context) {
                 notificacion.descuento?.let {
                     builder.setContentText("¡$it% de descuento! ${notificacion.descripcion}")
                 }
+            }
+            com.grupo4.appreservas.modelos.TipoNotificacion.ENCUESTA_SATISFACCION -> {
+                builder.setContentText(notificacion.descripcion)
+                // Agregar acción para responder encuesta
+                builder.addAction(
+                    R.drawable.ic_notifications,
+                    "Responder encuesta",
+                    pendingIntent
+                )
             }
             else -> {}
         }

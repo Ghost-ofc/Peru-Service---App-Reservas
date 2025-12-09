@@ -8,7 +8,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import com.grupo4.appreservas.viewmodel.AutenticacionViewModel
@@ -40,9 +39,17 @@ class LoginActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this, AutenticacionViewModelFactory(repository))[AutenticacionViewModel::class.java]
 
         // Observar cambios en el usuario autenticado
-        viewModel.usuario.observe(this) { usuario ->
+        viewModel.usuarioAutenticado.observe(this) { usuario ->
             if (usuario != null) {
-                redirigirSegunRol(usuario)
+                // Enviar loginExitoso(usuario) a PanelPrincipalActivity según diagrama UML
+                enviarLoginExitoso(usuario)
+            }
+        }
+
+        // Observar mensajes de estado
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            mensaje?.let {
+                mostrarError(it)
             }
         }
     }
@@ -56,7 +63,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun configurarListeners() {
         btnIniciarSesion.setOnClickListener {
-            iniciarSesion()
+            enviarCredenciales()
         }
 
         tvRegistrate.setOnClickListener {
@@ -64,33 +71,37 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun iniciarSesion() {
-        val correo = etCorreo.text.toString().trim()
+    /**
+     * Envía las credenciales al ViewModel.
+     * Equivalente a enviarCredenciales(nombreUsuario, contrasena) del diagrama UML.
+     */
+    private fun enviarCredenciales() {
+        val nombreUsuario = etCorreo.text.toString().trim() // En este sistema, nombreUsuario es el correo
         val contrasena = etContrasena.text.toString()
 
-        if (correo.isEmpty() || contrasena.isEmpty()) {
+        if (nombreUsuario.isEmpty() || contrasena.isEmpty()) {
             mostrarError("Por favor, completa todos los campos")
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(correo).matches()) {
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(nombreUsuario).matches()) {
             mostrarError("Por favor, ingresa un correo válido")
             return
         }
 
-        lifecycleScope.launch {
-            try {
-                viewModel.iniciarSesion(correo, contrasena)
-            } catch (e: Exception) {
-                mostrarError("Error al iniciar sesión: ${e.message}")
-            }
-        }
+        // Enviar credenciales al ViewModel
+        viewModel.iniciarSesion(nombreUsuario, contrasena)
     }
 
-    private fun redirigirSegunRol(usuario: com.grupo4.appreservas.modelos.Usuario) {
+    /**
+     * Envía el evento loginExitoso(usuario) a PanelPrincipalActivity.
+     * Equivalente a loginExitoso(usuario) del diagrama UML.
+     */
+    private fun enviarLoginExitoso(usuario: com.grupo4.appreservas.modelos.Usuario) {
         val intent = Intent(this, PanelPrincipalActivity::class.java)
         intent.putExtra("USUARIO_ID", usuario.usuarioId)
         intent.putExtra("ROL_ID", usuario.rolId)
+        intent.putExtra("LOGIN_EXITOSO", true)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()

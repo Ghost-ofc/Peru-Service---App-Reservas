@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * ViewModel para gestionar las recompensas (puntos y logros) del usuario.
- * Equivalente a RecompensasViewModel del diagrama UML.
+ * Equivalente a PuntosLogrosViewModel del diagrama UML.
  */
 class RecompensasViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -24,6 +24,12 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _logros = MutableLiveData<List<Logro>>()
     val logros: LiveData<List<Logro>> = _logros
+
+    private val _toursCompletados = MutableLiveData<Int>()
+    val toursCompletados: LiveData<Int> = _toursCompletados
+
+    private val _mensajeEstado = MutableLiveData<String>()
+    val mensajeEstado: LiveData<String> = _mensajeEstado
 
     private val _error = MutableLiveData<String>()
     val error: LiveData<String> = _error
@@ -43,7 +49,7 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
                     verificarYDesbloquearLogros(usuarioId)
                     
                     // Recargar puntos actualizados
-                    val puntosActuales = repository.obtenerPuntos(usuarioId)
+                    val puntosActuales = repository.obtenerPuntosUsuario(usuarioId)
                     _puntos.postValue(puntosActuales)
                     
                     // Recargar logros
@@ -63,7 +69,7 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val logros = repository.obtenerLogros(usuarioId)
+                    val logros = repository.obtenerLogrosUsuario(usuarioId)
                     _logros.postValue(logros)
                 } catch (e: Exception) {
                     _error.postValue("Error al cargar logros: ${e.message}")
@@ -79,7 +85,7 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val puntos = repository.obtenerPuntos(usuarioId)
+                    val puntos = repository.obtenerPuntosUsuario(usuarioId)
                     _puntos.postValue(puntos)
                 } catch (e: Exception) {
                     _error.postValue("Error al cargar puntos: ${e.message}")
@@ -89,24 +95,48 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
+     * Carga el resumen de puntos y logros del usuario.
+     * Equivalente a cargarResumenPuntosYLogros(usuariold) del diagrama UML.
+     */
+    fun cargarResumenPuntosYLogros(usuarioId: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val puntos = repository.obtenerPuntosUsuario(usuarioId)
+                    val logros = repository.obtenerLogrosUsuario(usuarioId)
+                    val reservasCompletadas = repository.obtenerReservasCompletadas(usuarioId)
+                    
+                    _puntos.postValue(puntos)
+                    _logros.postValue(logros)
+                    _toursCompletados.postValue(reservasCompletadas.size)
+                    _mensajeEstado.postValue("Datos cargados correctamente")
+                } catch (e: Exception) {
+                    _error.postValue("Error al cargar resumen: ${e.message}")
+                    _mensajeEstado.postValue("Error al cargar datos")
+                }
+            }
+        }
+    }
+
+    /**
      * Verifica y desbloquea logros según los criterios del usuario.
      */
     private fun verificarYDesbloquearLogros(usuarioId: Int) {
-        val reservasConfirmadas = repository.obtenerReservasConfirmadas(usuarioId)
-        val puntosActuales = repository.obtenerPuntos(usuarioId)
+        val reservasCompletadas = repository.obtenerReservasCompletadas(usuarioId)
+        val puntosActuales = repository.obtenerPuntosUsuario(usuarioId)
         
         // Verificar logro "Primer Viaje"
-        if (reservasConfirmadas.size == 1) {
+        if (reservasCompletadas.size == 1) {
             repository.desbloquearLogro(usuarioId, "PRIMER_VIAJE")
         }
         
         // Verificar logro "Viajero Frecuente" (5+ reservas)
-        if (reservasConfirmadas.size >= 5) {
+        if (reservasCompletadas.size >= 5) {
             repository.desbloquearLogro(usuarioId, "VIAJERO_FRECUENTE")
         }
         
         // Verificar logro por tours completados (10+ reservas)
-        if (reservasConfirmadas.size >= 10) {
+        if (reservasCompletadas.size >= 10) {
             repository.desbloquearLogro(usuarioId, "TOURS_10")
         }
         

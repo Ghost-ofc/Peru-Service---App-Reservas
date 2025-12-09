@@ -53,17 +53,30 @@ class IntegracionRecompensasTest {
         application = mockk(relaxed = true)
         every { application.applicationContext } returns context
 
-        // Mock DatabaseHelper
+        // Mock DatabaseHelper - IMPORTANTE: configurar mocks ANTES de instanciar el repositorio
         mockkConstructor(DatabaseHelper::class)
+        // Mockear métodos básicos para evitar errores de base de datos
+        // Estos mocks por defecto se pueden sobrescribir en cada test
+        every { anyConstructed<DatabaseHelper>().obtenerPuntos(any()) } returns 0
+        every { anyConstructed<DatabaseHelper>().inicializarPuntos(any()) } just Runs
+        every { anyConstructed<DatabaseHelper>().sumarPuntos(any(), any()) } returns true
+        every { anyConstructed<DatabaseHelper>().obtenerLogros(any()) } returns emptyList()
+        every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(any(), any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(any()) } returns emptyList()
 
+        // Instanciar repositorio DESPUÉS de configurar todos los mocks
         repository = PeruvianServiceRepository.getInstance(context)
-        viewModel = RecompensasViewModel(application)
+        // El ViewModel se instanciará en cada test después de configurar los mocks específicos
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
         clearAllMocks()
+        // Resetear la instancia singleton del repositorio para cada test
+        val field = PeruvianServiceRepository::class.java.getDeclaredField("instance")
+        field.isAccessible = true
+        field.set(null, null)
     }
 
     @Test
@@ -95,9 +108,13 @@ class IntegracionRecompensasTest {
         }
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
+        // Mock para verificarYDesbloquearLogros
         every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } returns emptyList()
         every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
         every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } returns 1L
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val puntosObserver = mockk<Observer<Int>>(relaxed = true)
@@ -107,10 +124,11 @@ class IntegracionRecompensasTest {
         repository.sumarPuntosPorReserva(usuarioId, reservaId)
 
         // Assert: Verificar que se sumaron los puntos
-        verify(exactly = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
+        // inicializarPuntos se llama desde obtenerPuntos (que se llama en verificarYDesbloquearLogros)
+        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, PuntosUsuario.PUNTOS_POR_RESERVA) }
         
-        // Verificar puntos
+        // Verificar puntos (esto también llama a inicializarPuntos)
         val puntos = repository.obtenerPuntos(usuarioId)
         assertEquals(PuntosUsuario.PUNTOS_POR_RESERVA, puntos)
     }
@@ -135,9 +153,13 @@ class IntegracionRecompensasTest {
         )
 
         // Mock: Puntos iniciales
-        every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } returns PuntosUsuario.PUNTOS_POR_RESERVA
+        var puntosSimulados = PuntosUsuario.PUNTOS_POR_RESERVA
+        every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } answers { puntosSimulados }
         every { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) } just Runs
-        every { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, any()) } returns true
+        every { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, any()) } answers {
+            puntosSimulados += PuntosUsuario.PUNTOS_POR_RESERVA
+            true
+        }
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
 
@@ -158,6 +180,9 @@ class IntegracionRecompensasTest {
             }
             1L
         }
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val logrosObserver = mockk<Observer<List<Logro>>>(relaxed = true)
@@ -186,6 +211,9 @@ class IntegracionRecompensasTest {
         every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } returns emptyList()
         every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
         every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } returns 1L
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val puntosObserver = mockk<Observer<Int>>(relaxed = true)
@@ -250,6 +278,9 @@ class IntegracionRecompensasTest {
             }
             1L
         }
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val logrosObserver = mockk<Observer<List<Logro>>>(relaxed = true)
@@ -339,7 +370,7 @@ class IntegracionRecompensasTest {
 
         // Mock: Estado inicial (sin puntos, sin reservas)
         var puntosSimulados = 0
-        every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } answers { puntosSimulados } andThen PuntosUsuario.PUNTOS_POR_RESERVA
+        every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } answers { puntosSimulados }
         every { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) } just Runs
         every { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, PuntosUsuario.PUNTOS_POR_RESERVA) } answers {
             puntosSimulados += PuntosUsuario.PUNTOS_POR_RESERVA
@@ -358,6 +389,9 @@ class IntegracionRecompensasTest {
             1L
         }
 
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
+
         // Observadores
         val puntosObserver = mockk<Observer<Int>>(relaxed = true)
         val logrosObserver = mockk<Observer<List<Logro>>>(relaxed = true)
@@ -369,6 +403,11 @@ class IntegracionRecompensasTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Assert: Verificar que se sumaron los puntos
+        // Nota: El mock retorna puntosSimulados que se actualiza cuando se llama a sumarPuntos
+        verify(exactly = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
+        verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, PuntosUsuario.PUNTOS_POR_RESERVA) }
+        
+        // Verificar puntos después de la suma
         val puntos = repository.obtenerPuntos(usuarioId)
         assertEquals(PuntosUsuario.PUNTOS_POR_RESERVA, puntos)
 
@@ -386,9 +425,20 @@ class IntegracionRecompensasTest {
         every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } returns 0
         every { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) } just Runs
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns emptyList()
-        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } returns emptyList()
+        // Primera llamada retorna lista vacía, luego retorna los logros creados
+        var logrosCreados = mutableListOf<Logro>()
+        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers { 
+            logrosCreados.toList() 
+        }
         every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
-        every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } answers {
+            val logro = secondArg<Logro>()
+            logrosCreados.add(logro)
+            1L
+        }
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val logrosObserver = mockk<Observer<List<Logro>>>(relaxed = true)
@@ -398,8 +448,9 @@ class IntegracionRecompensasTest {
         viewModel.cargarLogros(usuarioId)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Assert: Verificar que se crearon los logros predeterminados
-        // Deben crearse: Primer Viaje, Viajero Frecuente, Explorador Experto, Acumulador de Puntos, Maestro Acumulador
+        // Assert: Verificar que se obtuvieron los logros
+        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) }
+        // Verificar que se crearon los logros base (inicializarLogrosBase crea 5 logros)
         verify(atLeast = 5) { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) }
     }
 
@@ -431,6 +482,9 @@ class IntegracionRecompensasTest {
 
         // Mock: Obtener logros
         every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } returns logros
+
+        // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
+        viewModel = RecompensasViewModel(application)
 
         // Observador
         val logrosObserver = mockk<Observer<List<Logro>>>(relaxed = true)

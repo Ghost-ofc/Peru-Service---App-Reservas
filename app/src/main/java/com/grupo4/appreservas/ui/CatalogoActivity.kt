@@ -96,9 +96,7 @@ class CatalogoActivity : AppCompatActivity() {
     private fun configurarHeader() {
         // Click en notificaciones
         ivNotificaciones.setOnClickListener {
-            val intent = Intent(this, NotificacionesActivity::class.java)
-            intent.putExtra("USUARIO_ID", usuarioId)
-            startActivity(intent)
+            abrirNotificaciones()
         }
         
         // Click en perfil
@@ -118,18 +116,36 @@ class CatalogoActivity : AppCompatActivity() {
         }
     }
     
+    /**
+     * Abre la pantalla de notificaciones.
+     * Equivalente a abrirNotificaciones() del diagrama UML.
+     */
+    private fun abrirNotificaciones() {
+        val intent = Intent(this, NotificacionesActivity::class.java)
+        intent.putExtra("USUARIO_ID", usuarioId)
+        startActivity(intent)
+    }
+
+    /**
+     * Muestra el icono de notificaciones con el contador.
+     * Equivalente a mostrarIconoNotificaciones(contador) del diagrama UML.
+     */
+    private fun mostrarIconoNotificaciones(contador: Int) {
+        if (contador > 0) {
+            tvBadgeNotificaciones.text = contador.toString()
+            tvBadgeNotificaciones.visibility = TextView.VISIBLE
+        } else {
+            tvBadgeNotificaciones.visibility = TextView.GONE
+        }
+    }
+
     private fun actualizarBadgeNotificaciones() {
         CoroutineScope(Dispatchers.Main).launch {
             val notificacionesNoLeidas: List<Notificacion> = withContext<List<Notificacion>>(Dispatchers.IO) {
                 repository.obtenerNotificacionesNoLeidasPorUsuario(usuarioId)
             }
             
-            if (notificacionesNoLeidas.isNotEmpty()) {
-                tvBadgeNotificaciones.text = notificacionesNoLeidas.size.toString()
-                tvBadgeNotificaciones.visibility = TextView.VISIBLE
-            } else {
-                tvBadgeNotificaciones.visibility = TextView.GONE
-            }
+            mostrarIconoNotificaciones(notificacionesNoLeidas.size)
         }
     }
 

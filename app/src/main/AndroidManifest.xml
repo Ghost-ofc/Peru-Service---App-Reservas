@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
@@ -104,6 +106,25 @@
         <!-- Recompensas -->
         <activity
             android:name=".ui.RecompensasActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Álbum del Tour (HU-008) -->
+        <activity
+            android:name=".ui.AlbumTourActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Subir Fotos (HU-008) -->
+        <activity
+            android:name=".ui.SubirFotosActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.AlbumTourActivity" />
+
+        <!-- Encuesta de Satisfacción (HU-009) -->
+        <activity
+            android:name=".ui.EncuestaActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
