@@ -28,8 +28,10 @@ import java.util.*
  * Pruebas de integración para HU-005: Escaneo de QR
  * 
  * Escenarios a probar:
- * 1. Escaneo de QR válido: El guía escanea el código del turista, el sistema valida y marca asistencia
- * 2. Escaneo de QR inválido: El código ya fue usado o no corresponde, el sistema muestra mensaje de error
+ * 1. Escaneo de QR válido: El guía escanea el código del turista, el sistema valida el QR 
+ *    y marca la asistencia como "Confirmada"
+ * 2. Escaneo de QR inválido: El código ya fue usado o no corresponde, el sistema muestra 
+ *    mensaje "QR no válido o ya registrado"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class IntegracionEscaneoQRTest {
@@ -65,6 +67,7 @@ class IntegracionEscaneoQRTest {
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(any()) } returns null
         every { anyConstructed<DatabaseHelper>().estaReservaUsada(any()) } returns false
         every { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().obtenerCheckInPorReserva(any()) } returns null
         every { anyConstructed<DatabaseHelper>().obtenerToursDelGuia(any(), any()) } returns emptyList()
 
         // Instanciar repositorio DESPUÉS de configurar todos los mocks
@@ -102,50 +105,52 @@ class IntegracionEscaneoQRTest {
             codigoConfirmacion = codigoQR
         )
 
-        val tour = Tour(
-            tourId = tourId,
-            nombre = "Machu Picchu Tour",
-            fecha = fechaHoy,
-            hora = "08:00",
-            puntoEncuentro = "Plaza de Armas",
-            capacidad = 15,
-            participantesConfirmados = 0,
-            estado = "Pendiente"
+        val checkInRegistrado = CheckIn(
+            checkInId = 1,
+            reservaId = reservaId,
+            guiaId = usuarioId,
+            horaRegistro = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+            estado = "Confirmado"
         )
 
-        // Mock: Buscar reserva por QR (usado por validarQR y obtenerReservaId)
+        // Mock: Buscar reserva por QR (usado por validarCodigoQR)
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(codigoQR) } returns null
-        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         
-        // Mock: Verificar si está usada (no está usada) - usado por estaUsado
+        // Mock: Verificar si está usada (no está usada) - usado por validarCodigoQR
         every { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) } returns false
         
         // Mock: Registrar check-in - usado por registrarCheckIn
         every { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().obtenerCheckInPorReserva(reservaId) } returns checkInRegistrado
 
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         checkInViewModel = CheckInViewModel(application)
 
         // Observador para LiveData
-        val resultadoObserver = mockk<Observer<String?>>(relaxed = true)
-        checkInViewModel.resultadoEscaneo.observeForever(resultadoObserver)
+        val resultadoObserver = mockk<Observer<CheckIn?>>(relaxed = true)
+        checkInViewModel.resultadoCheckin.observeForever(resultadoObserver)
 
         // Act: Procesar escaneo QR
         checkInViewModel.procesarEscaneoQR(codigoQR, tourId, usuarioId)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Assert: Verificar que se validó el QR (validarQR llama a obtenerReservaPorQR)
+        // Assert: Verificar que se validó el QR (validarCodigoQR llama a obtenerReservaPorQR)
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) }
-        // Verificar que se obtuvo el ID de la reserva (obtenerReservaId llama a obtenerReservaPorQR)
-        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) }
-        // Verificar que se verificó si está usado (estaUsado llama a estaReservaUsada)
+        // Verificar que se verificó si está usado (validarCodigoQR llama a estaReservaUsada)
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) }
         // Verificar que se registró el check-in
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) }
         
-        // Verificar que se actualizó el resultado
+        // Verificar que se actualizó el resultado con el CheckIn
         verify { resultadoObserver.onChanged(any()) }
+        
+        // Verificar que el resultado es un CheckIn válido
+        val resultado = checkInViewModel.resultadoCheckin.value
+        assertNotNull(resultado)
+        assertEquals(reservaId, resultado?.reservaId)
+        assertEquals(usuarioId, resultado?.guiaId)
+        assertEquals("Confirmado", resultado?.estado)
     }
 
     @Test
@@ -161,14 +166,14 @@ class IntegracionEscaneoQRTest {
         checkInViewModel = CheckInViewModel(application)
 
         // Observador para LiveData
-        val resultadoObserver = mockk<Observer<String?>>(relaxed = true)
-        checkInViewModel.resultadoEscaneo.observeForever(resultadoObserver)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
+        checkInViewModel.mensajeEstado.observeForever(mensajeObserver)
 
         // Act: Procesar escaneo QR inválido
         checkInViewModel.procesarEscaneoQR(codigoQRInvalido, tourId, usuarioId)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Assert: Verificar que se intentó buscar la reserva (validarQR llama a obtenerReservaPorQR)
+        // Assert: Verificar que se intentó buscar la reserva (validarCodigoQR llama a obtenerReservaPorQR)
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQRInvalido) }
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorId(codigoQRInvalido) }
         
@@ -176,7 +181,12 @@ class IntegracionEscaneoQRTest {
         verify(exactly = 0) { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) }
         
         // Verificar que se mostró mensaje de error
-        verify { resultadoObserver.onChanged(any()) }
+        verify { mensajeObserver.onChanged(any()) }
+        
+        // Verificar que el mensaje indica que el QR no es válido
+        val mensaje = checkInViewModel.mensajeEstado.value
+        assertNotNull(mensaje)
+        assertTrue(mensaje!!.contains("no válido") || mensaje.contains("ya registrado"))
     }
 
     @Test
@@ -204,23 +214,22 @@ class IntegracionEscaneoQRTest {
         field.isAccessible = true
         field.set(null, null)
         
-        // Mock: Buscar reserva por QR (usado por validarQR y obtenerReservaId)
+        // Mock: Buscar reserva por QR (usado por validarCodigoQR)
         // Estos mocks deben configurarse ANTES de instanciar el ViewModel
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(codigoQR) } returns null
-        // perteneceATour necesita obtener la reserva por ID para verificar que pertenece al tour
-        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         
-        // Mock: Verificar si está usada (ya está usada) - usado por estaUsado
+        // Mock: Verificar si está usada (ya está usada) - usado por validarCodigoQR
         every { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) } returns true
 
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         // Esto creará un nuevo repositorio con los mocks configurados
+        repository = PeruvianServiceRepository.getInstance(context)
         checkInViewModel = CheckInViewModel(application)
 
         // Observador
-        val resultadoObserver = mockk<Observer<String?>>(relaxed = true)
-        checkInViewModel.resultadoEscaneo.observeForever(resultadoObserver)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
+        checkInViewModel.mensajeEstado.observeForever(mensajeObserver)
 
         // Act: Procesar escaneo QR ya usado
         checkInViewModel.procesarEscaneoQR(codigoQR, tourId, usuarioId)
@@ -229,16 +238,19 @@ class IntegracionEscaneoQRTest {
         // Assert: Verificar que se intentó validar el QR
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) }
         
-        // Verificar que se detectó que está usada (estaUsado llama a estaReservaUsada)
-        // Nota: Si el flujo llega hasta estaUsado, se llamará a estaReservaUsada
-        // Si el flujo se detiene antes (por ejemplo, en perteneceATour), no se llamará
-        verify(atLeast = 0) { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) }
+        // Verificar que se detectó que está usada (validarCodigoQR llama a estaReservaUsada)
+        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) }
         
         // Verificar que NO se registró otro check-in
         verify(exactly = 0) { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) }
         
-        // Verificar que se mostró un mensaje de error (el resultado debe indicar que el QR no es válido)
-        verify { resultadoObserver.onChanged(any()) }
+        // Verificar que se mostró un mensaje de error
+        verify { mensajeObserver.onChanged(any()) }
+        
+        // Verificar que el mensaje indica que el QR ya fue usado
+        val mensaje = checkInViewModel.mensajeEstado.value
+        assertNotNull(mensaje)
+        assertTrue(mensaje!!.contains("no válido") || mensaje.contains("ya registrado"))
     }
 
     @Test
@@ -263,28 +275,33 @@ class IntegracionEscaneoQRTest {
 
         // Mock: Buscar reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) } returns reserva
-        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
+        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(codigoQR) } returns null
         every { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) } returns false
 
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         checkInViewModel = CheckInViewModel(application)
 
         // Observador
-        val resultadoObserver = mockk<Observer<String?>>(relaxed = true)
-        checkInViewModel.resultadoEscaneo.observeForever(resultadoObserver)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
+        checkInViewModel.mensajeEstado.observeForever(mensajeObserver)
 
         // Act: Procesar escaneo QR de otro tour
         checkInViewModel.procesarEscaneoQR(codigoQR, tourId, usuarioId) // tourId diferente
         testDispatcher.scheduler.advanceUntilIdle()
 
-        // Assert: Verificar que se detectó que no pertenece al tour
-        // perteneceATour llama a obtenerReservaPorId
-        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) }
-        // Verificar que se intentó validar el QR
+        // Assert: Verificar que se intentó validar el QR
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) }
         
-        // Verificar que NO se registró check-in
+        // Verificar que NO se registró check-in (porque no pertenece al tour)
         verify(exactly = 0) { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) }
+        
+        // Verificar que se mostró mensaje de error
+        verify { mensajeObserver.onChanged(any()) }
+        
+        // Verificar que el mensaje indica que el QR no es válido
+        val mensaje = checkInViewModel.mensajeEstado.value
+        assertNotNull(mensaje)
+        assertTrue(mensaje!!.contains("no válido") || mensaje.contains("ya registrado"))
     }
 
     @Test
@@ -353,18 +370,27 @@ class IntegracionEscaneoQRTest {
             codigoConfirmacion = codigoQR
         )
 
+        val checkInRegistrado = CheckIn(
+            checkInId = 1,
+            reservaId = reservaId,
+            guiaId = usuarioId,
+            horaRegistro = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+            estado = "Confirmado"
+        )
+
         // Mock: Buscar reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) } returns reserva
-        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
+        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(codigoQR) } returns null
         every { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) } returns false
         every { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) } returns 1L
+        every { anyConstructed<DatabaseHelper>().obtenerCheckInPorReserva(reservaId) } returns checkInRegistrado
 
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         checkInViewModel = CheckInViewModel(application)
 
         // Observador
-        val resultadoObserver = mockk<Observer<String?>>(relaxed = true)
-        checkInViewModel.resultadoEscaneo.observeForever(resultadoObserver)
+        val resultadoObserver = mockk<Observer<CheckIn?>>(relaxed = true)
+        checkInViewModel.resultadoCheckin.observeForever(resultadoObserver)
 
         // Act: Procesar escaneo
         checkInViewModel.procesarEscaneoQR(codigoQR, tourId, usuarioId)
@@ -372,9 +398,13 @@ class IntegracionEscaneoQRTest {
 
         // Assert: Verificar flujo completo
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorQR(codigoQR) }
-        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) }
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().estaReservaUsada(codigoQR) }
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().registrarCheckIn(any()) }
+        
+        // Verificar que se retornó el CheckIn
+        val resultado = checkInViewModel.resultadoCheckin.value
+        assertNotNull(resultado)
+        assertEquals(reservaId, resultado?.reservaId)
+        assertEquals(usuarioId, resultado?.guiaId)
     }
 }
-
