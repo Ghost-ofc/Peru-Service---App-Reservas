@@ -3,10 +3,7 @@ package com.grupo4.appreservas.ui
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -14,183 +11,150 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.adapter.HistorialViajesAdapter
 import com.grupo4.appreservas.adapter.LogrosAdapter
-import com.grupo4.appreservas.repository.DatabaseHelper
-import com.grupo4.appreservas.repository.ReservasRepository
+import com.grupo4.appreservas.modelos.Logro
+import com.grupo4.appreservas.modelos.PuntosUsuario
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import com.grupo4.appreservas.viewmodel.RecompensasViewModel
 
 /**
- * Activity de Recompensas según HU-007 y diagrama UML.
- * Equivalente a RecompensasActivity del diagrama.
- * 
- * Usa arquitectura MVVM con RecompensasViewModel.
+ * Activity para mostrar las recompensas (puntos y logros) del usuario.
+ * Equivalente a PerfilUsuarioActivity del diagrama UML.
+ * Incluye funcionalidad de PerfilActivity según el diagrama.
  */
 class RecompensasActivity : AppCompatActivity() {
 
+    private var usuarioId: Int = 0
     private lateinit var viewModel: RecompensasViewModel
-    private lateinit var tvNombreUsuario: TextView
-    private lateinit var tvNivelUsuario: TextView
     private lateinit var tvPuntos: TextView
-    private lateinit var viewProgressBar: View
-    private lateinit var frameProgressBar: ViewGroup
+    private lateinit var tvNivelUsuario: TextView
     private lateinit var tvPuntosParaSiguiente: TextView
     private lateinit var tvToursCompletados: TextView
     private lateinit var tvLogrosDesbloqueados: TextView
+    private lateinit var viewProgressBar: View
+    private lateinit var frameProgressBar: View
     private lateinit var recyclerLogros: RecyclerView
-    private lateinit var recyclerHistorialViajes: RecyclerView
-    private lateinit var btnCanjearPuntos: Button
-    private lateinit var tvVolverInicio: TextView
     private lateinit var btnCerrar: ImageView
+    private lateinit var tvVolverInicio: TextView
     private lateinit var logrosAdapter: LogrosAdapter
-    private lateinit var historialAdapter: HistorialViajesAdapter
-
-    private var usuarioId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_recompensas)
 
-        obtenerDatosUsuario()
-        inicializarViewModel()
-        inicializarVistas()
-        configurarObservers()
-        cargarDatos()
-    }
-
-    private fun obtenerDatosUsuario() {
         usuarioId = intent.getIntExtra("USUARIO_ID", 0)
+
         if (usuarioId == 0) {
             Toast.makeText(this, "Error: No se proporcionó información del usuario", Toast.LENGTH_SHORT).show()
             finish()
+            return
         }
-    }
 
-    private fun inicializarViewModel() {
-        viewModel = ViewModelProvider(this)[RecompensasViewModel::class.java]
+        viewModel = ViewModelProvider(this).get(RecompensasViewModel::class.java)
+
+        inicializarVistas()
+        configurarRecyclerView()
+        configurarListeners()
+        observarViewModel()
+        cargarDatos()
     }
 
     private fun inicializarVistas() {
-        tvNombreUsuario = findViewById(R.id.tvNombreUsuario)
-        tvNivelUsuario = findViewById(R.id.tvNivelUsuario)
         tvPuntos = findViewById(R.id.tvPuntos)
-        viewProgressBar = findViewById(R.id.viewProgressBar)
-        frameProgressBar = findViewById(R.id.frameProgressBar)
+        tvNivelUsuario = findViewById(R.id.tvNivelUsuario)
         tvPuntosParaSiguiente = findViewById(R.id.tvPuntosParaSiguiente)
         tvToursCompletados = findViewById(R.id.tvToursCompletados)
         tvLogrosDesbloqueados = findViewById(R.id.tvLogrosDesbloqueados)
+        viewProgressBar = findViewById(R.id.viewProgressBar)
+        frameProgressBar = findViewById(R.id.frameProgressBar)
         recyclerLogros = findViewById(R.id.recyclerLogros)
-        recyclerHistorialViajes = findViewById(R.id.recyclerHistorialViajes)
-        btnCanjearPuntos = findViewById(R.id.btnCanjearPuntos)
-        tvVolverInicio = findViewById(R.id.tvVolverInicio)
         btnCerrar = findViewById(R.id.btnCerrar)
+        tvVolverInicio = findViewById(R.id.tvVolverInicio)
+        
+        // Cargar nombre del usuario
+        val repository = PeruvianServiceRepository.getInstance(this)
+        val usuario = repository.buscarUsuarioPorId(usuarioId)
+        usuario?.let {
+            findViewById<TextView>(R.id.tvNombreUsuario).text = it.nombreCompleto
+        }
+    }
 
-        // Configurar botón cerrar
+    private fun configurarRecyclerView() {
+        logrosAdapter = LogrosAdapter()
+
+        recyclerLogros.apply {
+            layoutManager = LinearLayoutManager(this@RecompensasActivity)
+            adapter = logrosAdapter
+        }
+    }
+
+    private fun configurarListeners() {
         btnCerrar.setOnClickListener {
             finish()
         }
 
-        // Configurar RecyclerViews
-        recyclerLogros.layoutManager = LinearLayoutManager(this)
-        logrosAdapter = LogrosAdapter()
-        recyclerLogros.adapter = logrosAdapter
-
-        recyclerHistorialViajes.layoutManager = LinearLayoutManager(this)
-        historialAdapter = HistorialViajesAdapter()
-        recyclerHistorialViajes.adapter = historialAdapter
-
-        // Cargar nombre de usuario
-        val dbHelper = DatabaseHelper(this)
-        val usuario = dbHelper.buscarUsuarioPorId(usuarioId)
-        tvNombreUsuario.text = usuario?.nombreCompleto ?: "Usuario"
-
-        // Configurar listeners
-        btnCanjearPuntos.setOnClickListener {
-            Toast.makeText(this, "Funcionalidad de canje próximamente", Toast.LENGTH_SHORT).show()
-        }
-
         tvVolverInicio.setOnClickListener {
+            // Volver al catálogo
+            val intent = Intent(this, CatalogoActivity::class.java)
+            intent.putExtra("USUARIO_ID", usuarioId)
+            startActivity(intent)
             finish()
         }
     }
 
-    private fun configurarObservers() {
-        // Observar puntos
+    private fun observarViewModel() {
         viewModel.puntos.observe(this) { puntos ->
-            tvPuntos.text = puntos.toString()
+            mostrarPuntos(puntos)
         }
 
-        // Observar información completa de puntos
-        viewModel.puntosUsuario.observe(this) { puntosUsuario ->
-            tvPuntos.text = puntosUsuario.puntosAcumulados.toString()
-            tvNivelUsuario.text = puntosUsuario.nivel
-            
-            // Calcular progreso (puntos actuales vs puntos para siguiente nivel)
-            val puntosActuales = puntosUsuario.puntosAcumulados
-            val puntosSiguienteNivel = when (puntosUsuario.nivel) {
-                "Explorador" -> 501
-                "Explorador Experto" -> 1501
-                "Viajero Profesional" -> 3001
-                else -> 3001
-            }
-            val puntosNivelActual = when (puntosUsuario.nivel) {
-                "Explorador" -> 0
-                "Explorador Experto" -> 501
-                "Viajero Profesional" -> 1501
-                else -> 3001
-            }
-            val progreso = puntosActuales - puntosNivelActual
-            val maxProgreso = puntosSiguienteNivel - puntosNivelActual
-            
-            // Actualizar barra de progreso personalizada
-            frameProgressBar.post {
-                if (maxProgreso > 0 && frameProgressBar.width > 0) {
-                    val porcentaje = (progreso.toFloat() / maxProgreso.toFloat()).coerceIn(0f, 1f)
-                    val progressWidth = (frameProgressBar.width * porcentaje).toInt()
-                    
-                    val layoutParams = viewProgressBar.layoutParams
-                    layoutParams.width = progressWidth.coerceAtLeast(0)
-                    viewProgressBar.layoutParams = layoutParams
-                    viewProgressBar.visibility = View.VISIBLE
-                } else {
-                    val layoutParams = viewProgressBar.layoutParams
-                    layoutParams.width = 0
-                    viewProgressBar.layoutParams = layoutParams
-                    viewProgressBar.visibility = View.VISIBLE
-                }
-            }
-            
-            tvPuntosParaSiguiente.text = "${puntosUsuario.puntosParaSiguienteNivel} puntos para el próximo nivel"
-        }
-
-        // Observar tours completados
-        viewModel.toursCompletados.observe(this) { numTours ->
-            tvToursCompletados.text = numTours.toString()
-        }
-
-        // Observar logros
         viewModel.logros.observe(this) { logros ->
-            logrosAdapter.actualizarLista(logros)
-            val logrosDesbloqueados = logros.count { it.desbloqueado }
-            tvLogrosDesbloqueados.text = logrosDesbloqueados.toString()
+            mostrarLogros(logros)
+        }
+
+        viewModel.toursCompletados.observe(this) { cantidad ->
+            tvToursCompletados.text = cantidad.toString()
+        }
+
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            // El mensaje de estado se puede usar para mostrar notificaciones si es necesario
+        }
+
+        viewModel.error.observe(this) { errorMessage ->
+            errorMessage?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     private fun cargarDatos() {
-        // Cargar logros y puntos
-        viewModel.cargarLogros(usuarioId)
-        
-        // Cargar historial de viajes
-        cargarHistorialViajes()
+        abrirPerfil(usuarioId)
     }
 
-    private fun cargarHistorialViajes() {
-        try {
-            val reservasRepository = ReservasRepository.getInstance(this)
-            val reservas = reservasRepository.obtenerReservasUsuario(usuarioId.toString())
-            historialAdapter.actualizarLista(reservas)
-        } catch (e: Exception) {
-            android.util.Log.e("RecompensasActivity", "Error al cargar historial: ${e.message}", e)
+    /**
+     * Abre el perfil de un usuario.
+     * Equivalente a abrirPerfil(usuariold) del diagrama UML.
+     */
+    private fun abrirPerfil(usuarioId: Int) {
+        viewModel.cargarResumenPuntosYLogros(usuarioId)
+    }
+
+    /**
+     * Abre el álbum de un tour.
+     * Equivalente a abrirAlbum(idTour) del diagrama UML (PerfilActivity).
+     */
+    private fun abrirAlbum(idTour: String) {
+        val repository = PeruvianServiceRepository.getInstance(this)
+        val reserva = repository.buscarReservaPorId(idTour)
+        val tour = reserva?.let { repository.obtenerTourPorId(it.tourId) }
+        
+        if (tour != null) {
+            val intent = Intent(this, AlbumTourActivity::class.java)
+            intent.putExtra("TOUR_ID", tour.tourId)
+            intent.putExtra("TOUR_NOMBRE", tour.nombre)
+            intent.putExtra("USUARIO_ID", usuarioId)
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, "No se pudo abrir el álbum del tour", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -200,23 +164,49 @@ class RecompensasActivity : AppCompatActivity() {
      */
     private fun mostrarPuntos(puntos: Int) {
         tvPuntos.text = puntos.toString()
+        
+        // Calcular nivel y puntos para siguiente nivel
+        val nivel = PuntosUsuario.calcularNivel(puntos)
+        val puntosParaSiguiente = PuntosUsuario.calcularPuntosParaSiguienteNivel(puntos)
+        
+        tvNivelUsuario.text = nivel
+        
+        if (puntosParaSiguiente > 0) {
+            tvPuntosParaSiguiente.text = "$puntosParaSiguiente puntos para el próximo nivel"
+        } else {
+            tvPuntosParaSiguiente.text = "¡Nivel máximo alcanzado!"
+        }
+        
+        // Actualizar barra de progreso
+        actualizarBarraProgreso(puntos, puntosParaSiguiente)
     }
 
     /**
      * Muestra los logros del usuario.
      * Equivalente a mostrarLogros(logros) del diagrama UML.
      */
-    private fun mostrarLogros(logros: List<com.grupo4.appreservas.modelos.Logro>) {
+    private fun mostrarLogros(logros: List<Logro>) {
         logrosAdapter.actualizarLista(logros)
+        
+        // Actualizar contador de logros desbloqueados
+        val logrosDesbloqueados = logros.count { it.desbloqueado }
+        tvLogrosDesbloqueados.text = logrosDesbloqueados.toString()
     }
 
     /**
-     * Actualiza la vista con los datos más recientes.
-     * Equivalente a actualizarVista() del diagrama UML.
+     * Actualiza la barra de progreso según los puntos.
      */
-    private fun actualizarVista() {
-        viewModel.cargarLogros(usuarioId)
-        cargarHistorialViajes()
+    private fun actualizarBarraProgreso(puntos: Int, puntosParaSiguiente: Int) {
+        val porcentaje = when {
+            puntos < 501 -> (puntos.toFloat() / 501f) * 100f
+            puntos < 1501 -> ((puntos - 501).toFloat() / 1000f) * 100f
+            puntos < 3001 -> ((puntos - 1501).toFloat() / 1500f) * 100f
+            else -> 100f
+        }
+        
+        val layoutParams = viewProgressBar.layoutParams
+        layoutParams.width = (frameProgressBar.width * porcentaje / 100f).toInt()
+        viewProgressBar.layoutParams = layoutParams
     }
 }
 

@@ -14,7 +14,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
 
     companion object {
         private const val NOMBRE_BD = "PeruvianService.db"
-        private const val VERSION_BD = 8  // Aumentada para agregar tablas de puntos y logros (HU-007)
+        private const val VERSION_BD = 10  // Aumentada para agregar tabla de encuestas (HU-009)
 
         // Tabla Roles
         private const val TABLA_ROLES = "roles"
@@ -131,6 +131,24 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
         private const val COL_LOGRO_ICONO = "icono"
         private const val COL_LOGRO_FECHA_DESBLOQUEO = "fecha_desbloqueo"
         private const val COL_LOGRO_DESBLOQUEADO = "desbloqueado"
+
+        // Tabla Fotos (HU-008)
+        private const val TABLA_FOTOS = "fotos"
+        private const val COL_FOTO_ID = "foto_id"
+        private const val COL_FOTO_TOUR_ID = "tour_id"
+        private const val COL_FOTO_URL = "url_imagen"
+        private const val COL_FOTO_AUTOR = "nombre_autor"
+        private const val COL_FOTO_FECHA_SUBIDA = "fecha_subida"
+        private const val COL_FOTO_APROBADA = "aprobada"
+
+        // Tabla Encuestas (HU-009)
+        private const val TABLA_ENCUESTAS = "encuestas"
+        private const val COL_ENCUESTA_ID = "encuesta_id"
+        private const val COL_ENCUESTA_TOUR_ID = "tour_id"
+        private const val COL_ENCUESTA_USUARIO_ID = "usuario_id"
+        private const val COL_ENCUESTA_CALIFICACION = "calificacion"
+        private const val COL_ENCUESTA_COMENTARIO = "comentario"
+        private const val COL_ENCUESTA_FECHA_RESPUESTA = "fecha_respuesta"
 
         private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         private val dateOnlyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -300,6 +318,32 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
                 $COL_LOGRO_FECHA_DESBLOQUEO TEXT,
                 $COL_LOGRO_DESBLOQUEADO INTEGER DEFAULT 0,
                 FOREIGN KEY ($COL_LOGRO_USUARIO_ID) REFERENCES $TABLA_USUARIOS($COL_USUARIO_ID)
+            )
+        """)
+
+        // Crear tabla Fotos (HU-008)
+        db?.execSQL("""
+            CREATE TABLE $TABLA_FOTOS (
+                $COL_FOTO_ID TEXT PRIMARY KEY,
+                $COL_FOTO_TOUR_ID TEXT NOT NULL,
+                $COL_FOTO_URL TEXT NOT NULL,
+                $COL_FOTO_AUTOR TEXT NOT NULL,
+                $COL_FOTO_FECHA_SUBIDA TEXT NOT NULL,
+                $COL_FOTO_APROBADA INTEGER DEFAULT 0,
+                FOREIGN KEY ($COL_FOTO_TOUR_ID) REFERENCES $TABLA_TOURS($COL_TOUR_ID)
+            )
+        """)
+
+        // Crear tabla Encuestas (HU-009)
+        db?.execSQL("""
+            CREATE TABLE $TABLA_ENCUESTAS (
+                $COL_ENCUESTA_ID TEXT PRIMARY KEY,
+                $COL_ENCUESTA_TOUR_ID TEXT NOT NULL,
+                $COL_ENCUESTA_USUARIO_ID TEXT NOT NULL,
+                $COL_ENCUESTA_CALIFICACION INTEGER NOT NULL,
+                $COL_ENCUESTA_COMENTARIO TEXT,
+                $COL_ENCUESTA_FECHA_RESPUESTA TEXT NOT NULL,
+                FOREIGN KEY ($COL_ENCUESTA_TOUR_ID) REFERENCES $TABLA_TOURS($COL_TOUR_ID)
             )
         """)
     }
@@ -644,6 +688,36 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
                 )
             """)
         }
+        
+        if (oldVersion < 9) {
+            // Crear tabla de fotos (HU-008)
+            db?.execSQL("""
+                CREATE TABLE IF NOT EXISTS $TABLA_FOTOS (
+                    $COL_FOTO_ID TEXT PRIMARY KEY,
+                    $COL_FOTO_TOUR_ID TEXT NOT NULL,
+                    $COL_FOTO_URL TEXT NOT NULL,
+                    $COL_FOTO_AUTOR TEXT NOT NULL,
+                    $COL_FOTO_FECHA_SUBIDA TEXT NOT NULL,
+                    $COL_FOTO_APROBADA INTEGER DEFAULT 0,
+                    FOREIGN KEY ($COL_FOTO_TOUR_ID) REFERENCES $TABLA_TOURS($COL_TOUR_ID)
+                )
+            """)
+        }
+        
+        if (oldVersion < 10) {
+            // Crear tabla de encuestas (HU-009)
+            db?.execSQL("""
+                CREATE TABLE IF NOT EXISTS $TABLA_ENCUESTAS (
+                    $COL_ENCUESTA_ID TEXT PRIMARY KEY,
+                    $COL_ENCUESTA_TOUR_ID TEXT NOT NULL,
+                    $COL_ENCUESTA_USUARIO_ID TEXT NOT NULL,
+                    $COL_ENCUESTA_CALIFICACION INTEGER NOT NULL,
+                    $COL_ENCUESTA_COMENTARIO TEXT,
+                    $COL_ENCUESTA_FECHA_RESPUESTA TEXT NOT NULL,
+                    FOREIGN KEY ($COL_ENCUESTA_TOUR_ID) REFERENCES $TABLA_TOURS($COL_TOUR_ID)
+                )
+            """)
+        }
     }
 
     // ============= MÉTODOS PARA RESERVAS =============
@@ -872,6 +946,35 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
             Log.e("DatabaseHelper", "Excepción al registrar check-in: ${e.message}", e)
             e.printStackTrace()
             return -1L
+        }
+    }
+
+    /**
+     * Obtiene un check-in por el ID de la reserva.
+     */
+    fun obtenerCheckInPorReserva(reservaId: String): CheckIn? {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLA_CHECKINS,
+            null,
+            "$COL_CHECKIN_RESERVA_ID = ?",
+            arrayOf(reservaId),
+            null, null, null
+        )
+
+        return if (cursor.moveToFirst()) {
+            val checkIn = CheckIn(
+                checkInId = cursor.getInt(cursor.getColumnIndexOrThrow(COL_CHECKIN_ID)),
+                reservaId = cursor.getString(cursor.getColumnIndexOrThrow(COL_CHECKIN_RESERVA_ID)),
+                guiaId = cursor.getInt(cursor.getColumnIndexOrThrow(COL_CHECKIN_GUIA_ID)),
+                horaRegistro = cursor.getString(cursor.getColumnIndexOrThrow(COL_CHECKIN_HORA)),
+                estado = cursor.getString(cursor.getColumnIndexOrThrow(COL_CHECKIN_ESTADO))
+            )
+            cursor.close()
+            checkIn
+        } else {
+            cursor.close()
+            null
         }
     }
 
@@ -2133,6 +2236,167 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
             criterio = CriterioLogro(TipoCriterio.TOURS_COMPLETADOS, 0), // Se calcula dinámicamente
             fechaDesbloqueo = fechaDesbloqueo,
             desbloqueado = desbloqueado
+        )
+    }
+
+    // ============= MÉTODOS PARA FOTOS (HU-008) =============
+
+    /**
+     * Inserta una foto en la base de datos.
+     */
+    fun insertarFoto(foto: Foto): Long {
+        val db = writableDatabase
+        val valores = ContentValues().apply {
+            put(COL_FOTO_ID, foto.idFoto)
+            put(COL_FOTO_TOUR_ID, foto.idTour)
+            put(COL_FOTO_URL, foto.urlImagen)
+            put(COL_FOTO_AUTOR, foto.nombreAutor)
+            put(COL_FOTO_FECHA_SUBIDA, dateFormat.format(foto.fechaSubida))
+            put(COL_FOTO_APROBADA, if (foto.aprobada) 1 else 0)
+        }
+        return db.insertWithOnConflict(TABLA_FOTOS, null, valores, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    /**
+     * Obtiene todas las fotos aprobadas de un tour.
+     */
+    fun obtenerFotosPorTour(tourId: String): List<Foto> {
+        val db = readableDatabase
+        val fotos = mutableListOf<Foto>()
+        val cursor = db.query(
+            TABLA_FOTOS,
+            null,
+            "$COL_FOTO_TOUR_ID = ? AND $COL_FOTO_APROBADA = ?",
+            arrayOf(tourId, "1"), // Solo fotos aprobadas
+            null, null,
+            "$COL_FOTO_FECHA_SUBIDA DESC"
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                fotos.add(cursorToFoto(cursor))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return fotos
+    }
+
+    /**
+     * Convierte un Cursor a un objeto Foto.
+     */
+    private fun cursorToFoto(cursor: Cursor): Foto {
+        val fechaSubidaStr = cursor.getString(cursor.getColumnIndexOrThrow(COL_FOTO_FECHA_SUBIDA))
+        val fechaSubida = try {
+            dateFormat.parse(fechaSubidaStr) ?: Date()
+        } catch (e: Exception) {
+            Date()
+        }
+
+        return Foto(
+            idFoto = cursor.getString(cursor.getColumnIndexOrThrow(COL_FOTO_ID)),
+            idTour = cursor.getString(cursor.getColumnIndexOrThrow(COL_FOTO_TOUR_ID)),
+            urlImagen = cursor.getString(cursor.getColumnIndexOrThrow(COL_FOTO_URL)),
+            nombreAutor = cursor.getString(cursor.getColumnIndexOrThrow(COL_FOTO_AUTOR)),
+            fechaSubida = fechaSubida,
+            aprobada = cursor.getInt(cursor.getColumnIndexOrThrow(COL_FOTO_APROBADA)) == 1
+        )
+    }
+
+    // ============= MÉTODOS PARA ENCUESTAS (HU-009) =============
+
+    /**
+     * Inserta una respuesta de encuesta en la base de datos.
+     */
+    fun insertarEncuestaRespuesta(encuesta: EncuestaRespuesta): Long {
+        val db = writableDatabase
+        val valores = ContentValues().apply {
+            put(COL_ENCUESTA_ID, encuesta.idRespuesta)
+            put(COL_ENCUESTA_TOUR_ID, encuesta.idTour)
+            put(COL_ENCUESTA_USUARIO_ID, encuesta.usuarioId)
+            put(COL_ENCUESTA_CALIFICACION, encuesta.calificacion)
+            put(COL_ENCUESTA_COMENTARIO, encuesta.comentario)
+            put(COL_ENCUESTA_FECHA_RESPUESTA, dateFormat.format(encuesta.fechaRespuesta))
+        }
+        return db.insertWithOnConflict(TABLA_ENCUESTAS, null, valores, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    /**
+     * Verifica si un usuario ya respondió una encuesta para un tour.
+     */
+    fun existeEncuestaRespuesta(tourId: String, usuarioId: String): Boolean {
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLA_ENCUESTAS,
+            arrayOf(COL_ENCUESTA_ID),
+            "$COL_ENCUESTA_TOUR_ID = ? AND $COL_ENCUESTA_USUARIO_ID = ?",
+            arrayOf(tourId, usuarioId),
+            null, null, null
+        )
+        val existe = cursor.count > 0
+        cursor.close()
+        return existe
+    }
+
+    /**
+     * Obtiene todas las respuestas de encuestas para un tour.
+     */
+    fun obtenerEncuestasPorTour(tourId: String): List<EncuestaRespuesta> {
+        val db = readableDatabase
+        val encuestas = mutableListOf<EncuestaRespuesta>()
+        val cursor = db.query(
+            TABLA_ENCUESTAS,
+            null,
+            "$COL_ENCUESTA_TOUR_ID = ?",
+            arrayOf(tourId),
+            null, null,
+            "$COL_ENCUESTA_FECHA_RESPUESTA DESC"
+        )
+
+        if (cursor.moveToFirst()) {
+            do {
+                encuestas.add(cursorToEncuestaRespuesta(cursor))
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return encuestas
+    }
+
+    /**
+     * Obtiene la calificación promedio de un tour.
+     */
+    fun obtenerCalificacionPromedioTour(tourId: String): Double {
+        val db = readableDatabase
+        val cursor = db.rawQuery(
+            "SELECT AVG($COL_ENCUESTA_CALIFICACION) FROM $TABLA_ENCUESTAS WHERE $COL_ENCUESTA_TOUR_ID = ?",
+            arrayOf(tourId)
+        )
+        val promedio = if (cursor.moveToFirst() && !cursor.isNull(0)) {
+            cursor.getDouble(0)
+        } else {
+            0.0
+        }
+        cursor.close()
+        return promedio
+    }
+
+    /**
+     * Convierte un Cursor a un objeto EncuestaRespuesta.
+     */
+    private fun cursorToEncuestaRespuesta(cursor: Cursor): EncuestaRespuesta {
+        val fechaRespuestaStr = cursor.getString(cursor.getColumnIndexOrThrow(COL_ENCUESTA_FECHA_RESPUESTA))
+        val fechaRespuesta = try {
+            dateFormat.parse(fechaRespuestaStr) ?: Date()
+        } catch (e: Exception) {
+            Date()
+        }
+
+        return EncuestaRespuesta(
+            idRespuesta = cursor.getString(cursor.getColumnIndexOrThrow(COL_ENCUESTA_ID)),
+            idTour = cursor.getString(cursor.getColumnIndexOrThrow(COL_ENCUESTA_TOUR_ID)),
+            usuarioId = cursor.getString(cursor.getColumnIndexOrThrow(COL_ENCUESTA_USUARIO_ID)),
+            calificacion = cursor.getInt(cursor.getColumnIndexOrThrow(COL_ENCUESTA_CALIFICACION)),
+            comentario = cursor.getString(cursor.getColumnIndexOrThrow(COL_ENCUESTA_COMENTARIO)) ?: "",
+            fechaRespuesta = fechaRespuesta
         )
     }
 }

@@ -6,202 +6,189 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.adapter.NotificacionesAdapter
-import com.grupo4.appreservas.controller.ControlNotificaciones
 import com.grupo4.appreservas.modelos.Notificacion
-import com.grupo4.appreservas.repository.RepositorioNotificaciones
-import com.grupo4.appreservas.repository.RepositorioOfertas
-import com.grupo4.appreservas.repository.RepositorioClima
-import com.grupo4.appreservas.service.NotificacionesService
+import com.grupo4.appreservas.viewmodel.NotificacionesViewModel
 
 /**
- * Activity de Notificaciones según el diagrama UML.
- * Equivalente a NotificacionesActivity del diagrama.
- * 
- * En arquitectura MVC, esta Activity (Vista) usa el ControlNotificaciones (Controller)
- * para manejar la lógica de notificaciones.
+ * Activity para mostrar las notificaciones del usuario.
+ * Equivalente a NotificacionesActivity del diagrama UML.
  */
 class NotificacionesActivity : AppCompatActivity() {
 
-    private lateinit var controlNotificaciones: ControlNotificaciones
+    private var usuarioId: Int = 0
+    private lateinit var viewModel: NotificacionesViewModel
     private lateinit var recyclerNotificaciones: RecyclerView
     private lateinit var tvContador: TextView
-    private lateinit var tvMarcarTodas: TextView
     private lateinit var btnCerrar: ImageView
+    private lateinit var tvMarcarTodas: TextView
     private lateinit var notificacionesAdapter: NotificacionesAdapter
-
-    private var usuarioId: Int = 0
-    private var notificaciones: List<Notificacion> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_notificaciones)
 
-        obtenerDatosUsuario()
-        inicializarDependencias()
-        inicializarVistas()
-        cargarNotificaciones()
-    }
-
-    private fun obtenerDatosUsuario() {
         usuarioId = intent.getIntExtra("USUARIO_ID", 0)
+
         if (usuarioId == 0) {
             Toast.makeText(this, "Error: No se proporcionó información del usuario", Toast.LENGTH_SHORT).show()
             finish()
+            return
         }
-    }
 
-    private fun inicializarDependencias() {
-        val repositorioNotificaciones = RepositorioNotificaciones(this)
-        val repositorioOfertas = RepositorioOfertas(this)
-        val repositorioClima = RepositorioClima(this)
-        val notificacionesService = NotificacionesService(this)
+        viewModel = ViewModelProvider(this).get(NotificacionesViewModel::class.java)
 
-        controlNotificaciones = ControlNotificaciones(
-            repositorioNotificaciones,
-            repositorioOfertas,
-            repositorioClima,
-            notificacionesService,
-            this
-        )
+        inicializarVistas()
+        configurarRecyclerView()
+        configurarListeners()
+        observarViewModel()
+        cargarNotificaciones()
     }
 
     private fun inicializarVistas() {
         recyclerNotificaciones = findViewById(R.id.recyclerNotificaciones)
         tvContador = findViewById(R.id.tvContador)
-        tvMarcarTodas = findViewById(R.id.tvMarcarTodas)
         btnCerrar = findViewById(R.id.btnCerrar)
+        tvMarcarTodas = findViewById(R.id.tvMarcarTodas)
+    }
 
-        recyclerNotificaciones.layoutManager = LinearLayoutManager(this)
+    private fun configurarRecyclerView() {
+        notificacionesAdapter = NotificacionesAdapter(
+            onItemClick = { notificacion ->
+                seleccionarNotificacion(notificacion.id)
+            },
+            onMarcarLeida = { notificacionId ->
+                viewModel.marcarComoLeida(notificacionId)
+            }
+        )
 
+        recyclerNotificaciones.apply {
+            layoutManager = LinearLayoutManager(this@NotificacionesActivity)
+            adapter = notificacionesAdapter
+        }
+    }
+
+    private fun configurarListeners() {
         btnCerrar.setOnClickListener {
             finish()
         }
 
         tvMarcarTodas.setOnClickListener {
-            marcarTodasComoLeidas()
+            viewModel.marcarTodasComoLeidas(usuarioId)
+        }
+    }
+
+    private fun observarViewModel() {
+        viewModel.notificaciones.observe(this) { notificaciones ->
+            mostrarListaNotificaciones(notificaciones)
+            actualizarContador(notificaciones)
         }
 
-        // Configurar adapter
-        notificacionesAdapter = NotificacionesAdapter(
-            notificaciones = notificaciones,
-            onItemClick = { notificacion ->
-                mostrarDetalleNotificacion(notificacion)
-            },
-            onVerOfertaClick = { notificacion ->
-                verOferta(notificacion)
+        viewModel.recordatorios.observe(this) { notificaciones ->
+            // Actualizar cuando cambian los recordatorios
+            viewModel.notificaciones.value?.let { todas ->
+                mostrarListaNotificaciones(todas)
+                actualizarContador(todas)
             }
-        )
-        recyclerNotificaciones.adapter = notificacionesAdapter
+        }
+
+        viewModel.error.observe(this) { errorMessage ->
+            errorMessage?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     /**
      * Carga las notificaciones del usuario.
+     * Equivalente a cargarNotificaciones(usuarioId) del diagrama UML.
+     */
+    private fun cargarNotificaciones(usuarioId: Int) {
+        viewModel.cargarRecordatoriosUsuario(usuarioId)
+        viewModel.cargarAlertasClimaticas(usuarioId)
+        viewModel.cargarOfertasUltimoMinuto(usuarioId)
+    }
+
+    private fun cargarNotificaciones() {
+        cargarNotificaciones(usuarioId)
+    }
+
+    /**
+     * Muestra la lista de notificaciones.
+     * Equivalente a mostrarListaNotificaciones(listaNotificaciones) del diagrama UML.
+     */
+    private fun mostrarListaNotificaciones(listaNotificaciones: List<Notificacion>) {
+        notificacionesAdapter.actualizarLista(listaNotificaciones)
+    }
+
+    /**
+     * Muestra las notificaciones en la lista.
      * Equivalente a mostrarNotificaciones() del diagrama UML.
      */
-    private fun cargarNotificaciones() {
-        notificaciones = controlNotificaciones.cargarRecordatorios(usuarioId)
-        notificacionesAdapter = NotificacionesAdapter(
-            notificaciones = notificaciones,
-            onItemClick = { notificacion ->
-                mostrarDetalleNotificacion(notificacion)
-            },
-            onVerOfertaClick = { notificacion ->
-                verOferta(notificacion)
-            }
-        )
-        recyclerNotificaciones.adapter = notificacionesAdapter
+    private fun mostrarNotificaciones(notificaciones: List<Notificacion>) {
+        mostrarListaNotificaciones(notificaciones)
+    }
 
-        // Actualizar contador de no leídas
-        val noLeidas = notificaciones.count { !it.leida }
-        tvContador.text = "$noLeidas sin leer"
-
-        if (notificaciones.isEmpty()) {
-            Toast.makeText(this, "No tienes notificaciones", Toast.LENGTH_SHORT).show()
+    /**
+     * Selecciona una notificación por su ID.
+     * Equivalente a seleccionarNotificacion(idNotificacion) del diagrama UML.
+     */
+    private fun seleccionarNotificacion(idNotificacion: String) {
+        val notificacion = viewModel.recordatorios.value?.find { it.id == idNotificacion }
+            ?: viewModel.notificaciones.value?.find { it.id == idNotificacion }
+        
+        notificacion?.let {
+            mostrarDetalleNotificacion(it)
         }
+    }
+
+    /**
+     * Abre la encuesta para un tour específico.
+     * Equivalente a abrirEncuesta(idTour) del diagrama UML.
+     */
+    private fun abrirEncuesta(idTour: String) {
+        val intent = Intent(this, EncuestaActivity::class.java).apply {
+            putExtra("TOUR_ID", idTour)
+            putExtra("USUARIO_ID", usuarioId)
+        }
+        startActivity(intent)
     }
 
     /**
      * Muestra el detalle de una notificación.
      * Equivalente a mostrarDetalleNotificacion(notificacion) del diagrama UML.
-     * 
-     * @param notificacion Notificación a mostrar
      */
     private fun mostrarDetalleNotificacion(notificacion: Notificacion) {
-        // Marcar como leída si no lo está
-        if (!notificacion.leida) {
-            controlNotificaciones.marcarComoLeida(notificacion.id)
-            // Recargar notificaciones para actualizar el contador
-            cargarNotificaciones()
+        // Si es una notificación de encuesta, abrir la EncuestaActivity
+        if (notificacion.tipo == com.grupo4.appreservas.modelos.TipoNotificacion.ENCUESTA_SATISFACCION && notificacion.tourId != null) {
+            abrirEncuesta(notificacion.tourId)
+            return
         }
 
-        // Mostrar diálogo con detalles
-        val mensaje = buildString {
-            append(notificacion.descripcion)
-            if (!notificacion.puntoEncuentro.isNullOrEmpty()) {
-                append("\n\nPunto de encuentro: ${notificacion.puntoEncuentro}")
+        // Por ahora solo mostrar un Toast con la descripción completa
+        val mensaje = when (notificacion.tipo) {
+            com.grupo4.appreservas.modelos.TipoNotificacion.RECORDATORIO -> {
+                "${notificacion.descripcion}\nHora: ${notificacion.horaTour}\nPunto de encuentro: ${notificacion.puntoEncuentro}"
             }
-            if (!notificacion.horaTour.isNullOrEmpty()) {
-                append("\nHora: ${notificacion.horaTour}")
+            com.grupo4.appreservas.modelos.TipoNotificacion.ALERTA_CLIMATICA -> {
+                "${notificacion.descripcion}\nRecomendaciones: ${notificacion.recomendaciones}"
             }
-            if (!notificacion.recomendaciones.isNullOrEmpty()) {
-                append("\n\nRecomendación: ${notificacion.recomendaciones}")
+            com.grupo4.appreservas.modelos.TipoNotificacion.OFERTA_ULTIMO_MINUTO -> {
+                "${notificacion.descripcion}\nDescuento: ${notificacion.descuento}%"
             }
-            if (notificacion.descuento != null) {
-                append("\n\nDescuento: ${notificacion.descuento}%")
-            }
+            else -> notificacion.descripcion
         }
-
-        android.app.AlertDialog.Builder(this)
-            .setTitle(notificacion.titulo)
-            .setMessage(mensaje)
-            .setPositiveButton("Aceptar", null)
-            .show()
+        
+        Toast.makeText(this, mensaje, Toast.LENGTH_LONG).show()
     }
 
-    /**
-     * Muestra la oferta cuando el usuario hace clic en "Ver oferta".
-     * 
-     * @param notificacion Notificación de oferta
-     */
-    private fun verOferta(notificacion: Notificacion) {
-        if (notificacion.tourId != null) {
-            // Extraer destinoId del tourId
-            val destinoId = if (notificacion.tourId.contains("_")) {
-                val partes = notificacion.tourId.split("_")
-                "${partes[0]}_${partes[1]}"
-            } else {
-                notificacion.tourId
-            }
-
-            // Abrir detalle del destino
-            val intent = Intent(this, DetalleDestinoActivity::class.java)
-            intent.putExtra("DESTINO_ID", destinoId)
-            intent.putExtra("USUARIO_ID", usuarioId)
-            startActivity(intent)
-        }
-    }
-
-    /**
-     * Marca todas las notificaciones como leídas.
-     */
-    private fun marcarTodasComoLeidas() {
-        val marcadas = controlNotificaciones.marcarTodasComoLeidas(usuarioId)
-        if (marcadas > 0) {
-            Toast.makeText(this, "$marcadas notificaciones marcadas como leídas", Toast.LENGTH_SHORT).show()
-            cargarNotificaciones()
-        } else {
-            Toast.makeText(this, "No hay notificaciones para marcar", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Recargar notificaciones al volver a la actividad
-        cargarNotificaciones()
+    private fun actualizarContador(notificaciones: List<Notificacion>) {
+        val noLeidas = notificaciones.count { !it.leida }
+        tvContador.text = "$noLeidas sin leer"
     }
 }
 

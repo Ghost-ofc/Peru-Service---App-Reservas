@@ -4,16 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    
-    <!-- Características de cámara -->
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-    <uses-feature
-        android:name="android.hardware.camera.autofocus"
-        android:required="false" />
-
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
     <application
         android:allowBackup="true"
@@ -24,8 +18,10 @@
         android:theme="@style/Theme.AppReservas"
         android:forceDarkAllowed="false"
         tools:targetApi="31">
+        
+        <!-- Activity principal -->
         <activity
-            android:name=".ui.LoginActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter>
@@ -34,48 +30,27 @@
             </intent-filter>
         </activity>
 
-
+        <!-- Login -->
         <activity
-            android:name=".ui.CatalogoActivity"
+            android:name=".ui.LoginActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <activity
-            android:name=".ui.DetalleDestinoActivity"
-            android:launchMode="singleTop"
-            android:parentActivityName=".ui.CatalogoActivity" />
-
-        <activity
-            android:name=".ui.FiltrosActivity"
-            android:parentActivityName=".ui.CatalogoActivity" />
-
-        <!-- HU-002: Reserva -->
-        <activity
-            android:name=".ui.ReservasActivity"
-            android:parentActivityName=".ui.CatalogoActivity" />
-
-        <!-- HU-003: Pago y voucher -->
-        <activity
-            android:name=".ui.PagoActivity"
-            android:parentActivityName=".ui.ReservasActivity" />
-
-        <activity
-            android:name=".ui.ReciboActivity"
-            android:launchMode="singleTask"
-            android:parentActivityName=".ui.CatalogoActivity" />
-
+        <!-- Registro -->
         <activity
             android:name=".ui.RegistroActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:parentActivityName=".ui.LoginActivity" />
 
+        <!-- Panel Principal -->
         <activity
             android:name=".ui.PanelPrincipalActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:launchMode="singleTask" />
 
+        <!-- Panel Guía/Administrador -->
         <activity
             android:name=".ui.PanelGuiaActivity"
             android:exported="false"
@@ -85,43 +60,73 @@
         <activity
             android:name=".ui.DetalleTourActivity"
             android:exported="false"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.PanelGuiaActivity" />
 
         <!-- Escaneo QR -->
         <activity
             android:name=".ui.EscaneoQRActivity"
             android:exported="false"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppReservas.NoActionBar" />
+            android:parentActivityName=".ui.DetalleTourActivity" />
 
-        <!-- Lista Participantes -->
+        <!-- Catálogo de destinos -->
         <activity
-            android:name=".ui.ListaParticipantesActivity"
+            android:name=".ui.CatalogoActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+
+        <!-- Detalle de destino -->
+        <activity
+            android:name=".ui.DetalleDestinoActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".ui.CatalogoActivity" />
+
+        <!-- Reservas -->
+        <activity
+            android:name=".ui.ReservasActivity"
+            android:parentActivityName=".ui.DetalleDestinoActivity" />
+
+        <!-- Pago -->
+        <activity
+            android:name=".ui.PaymentActivity"
+            android:parentActivityName=".ui.ReservasActivity" />
+
+        <!-- Voucher/Comprobante -->
+        <activity
+            android:name=".ui.VoucherActivity"
+            android:parentActivityName=".ui.PaymentActivity" />
 
         <!-- Notificaciones -->
         <activity
             android:name=".ui.NotificacionesActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppReservas" />
+            android:screenOrientation="portrait" />
 
-        <!-- Recompensas y Perfil (HU-007) -->
+        <!-- Recompensas -->
         <activity
             android:name=".ui.RecompensasActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppReservas"
-            android:parentActivityName=".ui.CatalogoActivity" />
+            android:screenOrientation="portrait" />
 
-        <!-- Actividad de captura de ZXing -->
+        <!-- Álbum del Tour (HU-008) -->
         <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="fullSensor"
-            tools:replace="android:screenOrientation" />
+            android:name=".ui.AlbumTourActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
+        <!-- Subir Fotos (HU-008) -->
+        <activity
+            android:name=".ui.SubirFotosActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.AlbumTourActivity" />
 
+        <!-- Encuesta de Satisfacción (HU-009) -->
+        <activity
+            android:name=".ui.EncuestaActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
 
     </application>
 

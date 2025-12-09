@@ -1,10 +1,7 @@
-package com.grupo4.appreservas.controller
+package com.grupo4.appreservas
 
 import com.grupo4.appreservas.controller.CatalogoController
-import com.grupo4.appreservas.controller.FiltrosController
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.repository.DestinoRepository
-import com.grupo4.appreservas.service.AvailabilityService
 import com.grupo4.appreservas.service.DestinoService
 import io.mockk.*
 import org.junit.After
@@ -15,8 +12,7 @@ import org.junit.Assert.*
 class CatalogoControllerTest {
 
     private lateinit var catalogoController: CatalogoController
-    private lateinit var destinationService: DestinoService
-    private lateinit var availabilityService: AvailabilityService
+    private lateinit var destinoService: DestinoService
 
     private val destinosMock = listOf(
         Destino(
@@ -51,9 +47,8 @@ class CatalogoControllerTest {
 
     @Before
     fun setUp() {
-        destinationService = mockk()
-        availabilityService = mockk()
-        catalogoController = CatalogoController(destinationService, availabilityService)
+        destinoService = mockk()
+        catalogoController = CatalogoController(destinoService)
     }
 
     @After
@@ -64,7 +59,7 @@ class CatalogoControllerTest {
     @Test
     fun `test solicitarDestinos devuelve lista de destinos correctamente`() {
         // Arrange
-        every { destinationService.listarDestinos() } returns destinosMock
+        every { destinoService.listarDestinos() } returns destinosMock
 
         // Act
         val resultado = catalogoController.solicitarDestinos()
@@ -73,66 +68,19 @@ class CatalogoControllerTest {
         assertEquals(2, resultado.size)
         assertEquals("Tour Machu Picchu Clásico", resultado[0].nombre)
         assertEquals("Líneas de Nazca Tour Aéreo", resultado[1].nombre)
-        verify(exactly = 1) { destinationService.listarDestinos() }
+        verify(exactly = 1) { destinoService.listarDestinos() }
     }
 
     @Test
     fun `test solicitarDestinos devuelve lista vacía cuando no hay destinos`() {
         // Arrange
-        every { destinationService.listarDestinos() } returns emptyList()
+        every { destinoService.listarDestinos() } returns emptyList()
 
         // Act
         val resultado = catalogoController.solicitarDestinos()
 
         // Assert
         assertTrue(resultado.isEmpty())
-        verify(exactly = 1) { destinationService.listarDestinos() }
-    }
-
-    @Test
-    fun `test solicitarDisponibilidad devuelve información correcta`() {
-        // Arrange
-        val destinoId = "dest_001"
-        val fecha = "2025-10-14"
-        every { destinationService.obtenerDetalle(destinoId) } returns destinosMock[0]
-
-        // Act
-        val resultado = catalogoController.solicitarDisponibilidad(destinoId, fecha)
-
-        // Assert
-        assertNotNull(resultado)
-        assertEquals(destinoId, resultado?.get("destinoId"))
-        assertEquals(fecha, resultado?.get("fecha"))
-        assertEquals(6, resultado?.get("cuposDisponibles"))
-    }
-
-    @Test
-    fun `test solicitarDisponibilidad devuelve null cuando destino no existe`() {
-        // Arrange
-        val destinoId = "dest_999"
-        val fecha = "2025-10-14"
-        every { destinationService.obtenerDetalle(destinoId) } returns null
-
-        // Act
-        val resultado = catalogoController.solicitarDisponibilidad(destinoId, fecha)
-
-        // Assert
-        assertNull(resultado)
-    }
-
-    @Test
-    fun `test aplicarFiltros por categoría devuelve destinos filtrados`() {
-        // Arrange
-        val criterios = mapOf("categoria" to "Cultura")
-        val destinosFiltrados = listOf(destinosMock[0])
-        every { destinationService.filtrarDestinos(criterios) } returns destinosFiltrados
-
-        // Act
-        val resultado = catalogoController.aplicarFiltros(criterios)
-
-        // Assert
-        assertEquals(1, resultado.size)
-        assertTrue(resultado[0].categorias.contains("Cultura"))
-        verify(exactly = 1) { destinationService.filtrarDestinos(criterios) }
+        verify(exactly = 1) { destinoService.listarDestinos() }
     }
 }

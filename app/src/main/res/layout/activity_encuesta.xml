@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#FFFFFF"
+        android:layout_margin="16dp"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/ic_dialog_info"
+                android:background="#E0E0E0"
+                android:padding="12dp"
+                android:tint="#D32F2F" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Encuesta de Satisfacción"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#000000" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tu opinión es importante"
+                    android:textSize="14sp"
+                    android:textColor="#666666" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/btnCerrar"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:contentDescription="Cerrar"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <!-- Información del tour -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFF3E0"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tour realizado"
+                android:textSize="12sp"
+                android:textColor="#666666" />
+
+            <TextView
+                android:id="@+id/tvTourNombre"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tour"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#000000"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tvFechaTour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fecha"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- Mensaje de agradecimiento -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="¡Gracias por viajar con Peruvian Service!"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#000000"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tu experiencia nos ayuda a mejorar nuestros servicios y ofrecer mejores tours a futuros viajeros."
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Sección de calificación -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="¿Cómo calificarías tu experiencia?"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#000000"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Selecciona de 1 a 5 estrellas"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Estrellas -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/estrella1"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/star_big_off"
+                android:contentDescription="1 estrella"
+                android:padding="8dp" />
+
+            <ImageView
+                android:id="@+id/estrella2"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/star_big_off"
+                android:contentDescription="2 estrellas"
+                android:padding="8dp" />
+
+            <ImageView
+                android:id="@+id/estrella3"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/star_big_off"
+                android:contentDescription="3 estrellas"
+                android:padding="8dp" />
+
+            <ImageView
+                android:id="@+id/estrella4"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/star_big_off"
+                android:contentDescription="4 estrellas"
+                android:padding="8dp" />
+
+            <ImageView
+                android:id="@+id/estrella5"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/star_big_off"
+                android:contentDescription="5 estrellas"
+                android:padding="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvTextoCalificacion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Selecciona una calificación"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Sección de comentarios -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cuéntanos sobre tu experiencia (Opcional)"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#000000"
+            android:layout_marginBottom="8dp" />
+
+        <EditText
+            android:id="@+id/etComentario"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:hint="¿Qué te gustó? ¿Qué podríamos mejorar? Comparte tus comentarios..."
+            android:inputType="textMultiLine"
+            android:maxLines="5"
+            android:maxLength="500"
+            android:gravity="top|start"
+            android:padding="12dp"
+            android:background="#F5F5F5"
+            android:textColor="#000000"
+            android:textColorHint="#999999" />
+
+        <TextView
+            android:id="@+id/tvContadorCaracteres"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0/500 caracteres"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_gravity="end"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Botones -->
+        <TextView
+            android:id="@+id/btnEnviar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enviar encuesta"
+            android:textSize="16sp"
+            android:textColor="#FFFFFF"
+            android:background="#D32F2F"
+            android:padding="16dp"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/btnResponderMasTarde"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Responder más tarde"
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:layout_gravity="center_horizontal"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+</ScrollView>
+

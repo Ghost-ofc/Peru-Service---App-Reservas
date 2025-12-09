@@ -1,47 +1,66 @@
 package com.grupo4.appreservas.viewmodel
 
-import android.content.Context
-import com.grupo4.appreservas.modelos.Reserva
-import com.grupo4.appreservas.repository.RepositorioCheckIn
-import com.grupo4.appreservas.repository.RepositorioQR
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import com.grupo4.appreservas.modelos.CheckIn
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
-class CheckInViewModel(context: Context) {
-    private val repositorioQR = RepositorioQR(context)
-    private val repositorioCheckIn = RepositorioCheckIn(context)
+/**
+ * ViewModel para gestionar el check-in mediante escaneo QR.
+ * Equivalente a CheckInViewModel del diagrama UML.
+ */
+class CheckInViewModel(application: Application) : AndroidViewModel(application) {
 
-    fun procesarEscaneoQR(codigo: String, tourId: String): ResultadoEscaneo {
-        // Validar que el código existe
-        val reserva = repositorioQR.obtenerReserva(codigo)
-            ?: return ResultadoEscaneo.Error("QR no válido o no existe")
+    private val repository: PeruvianServiceRepository = PeruvianServiceRepository.getInstance(application)
 
-        // Validar que pertenece al tour correcto
-        if (reserva.tourId != tourId) {
-            return ResultadoEscaneo.Error("Este QR no pertenece a este tour")
+    private val _resultadoCheckin = MutableLiveData<CheckIn?>()
+    val resultadoCheckin: LiveData<CheckIn?> = _resultadoCheckin
+
+    private val _mensajeEstado = MutableLiveData<String?>()
+    val mensajeEstado: LiveData<String?> = _mensajeEstado
+
+    /**
+     * Procesa el escaneo de un código QR.
+     * Equivalente a procesarEscaneoQR(codigoQR, idTour, idGuia) del diagrama UML.
+     */
+    fun procesarEscaneoQR(codigoQR: String, idTour: String, idGuia: Int) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    // Validar el código QR y obtener la reserva
+                    val reserva = repository.validarCodigoQR(codigoQR, idTour)
+                    
+                    if (reserva == null) {
+                        _mensajeEstado.postValue("QR no válido o ya registrado")
+                        _resultadoCheckin.postValue(null)
+                        return@withContext
+                    }
+
+                    // Registrar el check-in
+                    val fechaHora = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                    val checkIn = repository.registrarCheckIn(reserva.id, idGuia, fechaHora)
+
+                    if (checkIn != null) {
+                        _resultadoCheckin.postValue(checkIn)
+                        _mensajeEstado.postValue(null) // Limpiar mensaje de error si existe
+                    } else {
+                        _mensajeEstado.postValue("Error al registrar asistencia")
+                        _resultadoCheckin.postValue(null)
+                    }
+                } catch (e: Exception) {
+                    _mensajeEstado.postValue("Error al procesar QR: ${e.message}")
+                    _resultadoCheckin.postValue(null)
+                }
+            }
         }
-
-        // Validar que no esté ya usado
-        if (repositorioQR.estaUsado(codigo)) {
-            return ResultadoEscaneo.Error("QR no válido o ya registrado")
-        }
-
-        // Marcar como usado
-        repositorioQR.marcarUsado(codigo)
-
-        // Registrar check-in
-        val horaActual = obtenerHoraActual()
-        val guiaId = 1 // Obtener del contexto de sesión
-        repositorioCheckIn.registrar(reserva.reservaId, guiaId, horaActual)
-
-        return ResultadoEscaneo.Exito(reserva)
-    }
-
-    private fun obtenerHoraActual(): String {
-        val formato = java.text.SimpleDateFormat("HH:mm a", java.util.Locale.getDefault())
-        return formato.format(java.util.Date())
-    }
-
-    sealed class ResultadoEscaneo {
-        data class Exito(val reserva: Reserva) : ResultadoEscaneo()
-        data class Error(val mensaje: String) : ResultadoEscaneo()
     }
 }
+

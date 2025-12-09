@@ -7,23 +7,19 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.controller.ControlAuth
-import com.grupo4.appreservas.repository.DestinoRepository
-import com.grupo4.appreservas.service.RolesService
-import com.grupo4.appreservas.service.UsuariosService
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
+import com.grupo4.appreservas.viewmodel.AutenticacionViewModel
+import kotlinx.coroutines.launch
 
 /**
- * Activity de Login según el diagrama UML.
- * Equivalente a LoginActivity del diagrama.
- * 
- * En arquitectura MVC, esta Activity (Vista) usa el ControlAuth (Controller)
- * para manejar la lógica de autenticación.
+ * Activity para iniciar sesión.
+ * Corresponde a la HU: Inicio de sesión según mi rol.
  */
 class LoginActivity : AppCompatActivity() {
 
-    private lateinit var controlAuth: ControlAuth
-
+    private lateinit var viewModel: AutenticacionViewModel
     private lateinit var etCorreo: EditText
     private lateinit var etContrasena: EditText
     private lateinit var btnIniciarSesion: Button
@@ -33,20 +29,29 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-        // Inicializar DestinoRepository para asegurar que los destinos se carguen en la DB
-        // Esto garantiza que Machu Picchu y Líneas de Nazca estén disponibles desde el inicio
-        DestinoRepository.getInstance(this)
-        
         inicializarDependencias()
         inicializarVistas()
-        mostrarFormulario()
+        configurarListeners()
     }
 
     private fun inicializarDependencias() {
-        // Inicializar servicios y controlador según arquitectura MVC
-        val usuariosService = UsuariosService(this)
-        val rolesService = RolesService(this)
-        controlAuth = ControlAuth(usuariosService, rolesService)
+        val repository = PeruvianServiceRepository.getInstance(this)
+        viewModel = ViewModelProvider(this, AutenticacionViewModelFactory(repository))[AutenticacionViewModel::class.java]
+
+        // Observar cambios en el usuario autenticado
+        viewModel.usuarioAutenticado.observe(this) { usuario ->
+            if (usuario != null) {
+                // Enviar loginExitoso(usuario) a PanelPrincipalActivity según diagrama UML
+                enviarLoginExitoso(usuario)
+            }
+        }
+
+        // Observar mensajes de estado
+        viewModel.mensajeEstado.observe(this) { mensaje ->
+            mensaje?.let {
+                mostrarError(it)
+            }
+        }
     }
 
     private fun inicializarVistas() {
@@ -56,63 +61,74 @@ class LoginActivity : AppCompatActivity() {
         tvRegistrate = findViewById(R.id.tv_registrate)
     }
 
-    /**
-     * Muestra el formulario de login.
-     * Equivalente a mostrarFormulario() del diagrama UML.
-     */
-    private fun mostrarFormulario() {
+    private fun configurarListeners() {
         btnIniciarSesion.setOnClickListener {
             enviarCredenciales()
         }
 
         tvRegistrate.setOnClickListener {
-            val intent = Intent(this, RegistroActivity::class.java)
-            startActivity(intent)
+            abrirRegistro()
         }
     }
 
     /**
-     * Envía las credenciales para autenticación.
-     * Equivalente a enviarCredenciales(correo, contrasena) del diagrama UML.
+     * Envía las credenciales al ViewModel.
+     * Equivalente a enviarCredenciales(nombreUsuario, contrasena) del diagrama UML.
      */
     private fun enviarCredenciales() {
-        val correo = etCorreo.text.toString().trim()
+        val nombreUsuario = etCorreo.text.toString().trim() // En este sistema, nombreUsuario es el correo
         val contrasena = etContrasena.text.toString()
 
-        // Usar ControlAuth para iniciar sesión (patrón MVC)
-        val resultado = controlAuth.iniciarSesion(correo, contrasena)
-
-        when (resultado) {
-            is ControlAuth.ResultadoAuth.Exito -> {
-                val usuario = resultado.usuario
-                // Redirigir según el rol usando el método del controlador
-                redirigirSegunRol(usuario.rolId, usuario.usuarioId)
-            }
-            is ControlAuth.ResultadoAuth.Error -> {
-                mostrarError(resultado.mensaje)
-            }
+        if (nombreUsuario.isEmpty() || contrasena.isEmpty()) {
+            mostrarError("Por favor, completa todos los campos")
+            return
         }
+
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(nombreUsuario).matches()) {
+            mostrarError("Por favor, ingresa un correo válido")
+            return
+        }
+
+        // Enviar credenciales al ViewModel
+        viewModel.iniciarSesion(nombreUsuario, contrasena)
     }
 
     /**
-     * Redirige al usuario según su rol.
-     * Redirige a PanelPrincipalActivity que mostrará el contenido según el rol.
+     * Envía el evento loginExitoso(usuario) a PanelPrincipalActivity.
+     * Equivalente a loginExitoso(usuario) del diagrama UML.
      */
-    private fun redirigirSegunRol(rolId: Int, usuarioId: Int) {
-        // Redirigir a PanelPrincipalActivity que mostrará contenido según el rol
+    private fun enviarLoginExitoso(usuario: com.grupo4.appreservas.modelos.Usuario) {
         val intent = Intent(this, PanelPrincipalActivity::class.java)
-        intent.putExtra("USUARIO_ID", usuarioId)
-        intent.putExtra("ROL_ID", rolId)
+        intent.putExtra("USUARIO_ID", usuario.usuarioId)
+        intent.putExtra("ROL_ID", usuario.rolId)
+        intent.putExtra("LOGIN_EXITOSO", true)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
     }
 
-    /**
-     * Muestra un mensaje de error.
-     * Equivalente a mostrarError(mensaje) del diagrama UML.
-     */
+    private fun abrirRegistro() {
+        val intent = Intent(this, RegistroActivity::class.java)
+        startActivity(intent)
+    }
+
     private fun mostrarError(mensaje: String) {
         Toast.makeText(this, mensaje, Toast.LENGTH_SHORT).show()
     }
 }
+
+/**
+ * Factory para crear AutenticacionViewModel con dependencias.
+ */
+class AutenticacionViewModelFactory(
+    private val repository: PeruvianServiceRepository
+) : ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(AutenticacionViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return AutenticacionViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+

@@ -12,7 +12,8 @@ enum class TipoNotificacion(val valor: String) {
     ALERTA_CLIMATICA("Alerta Climática"),
     OFERTA_ULTIMO_MINUTO("Oferta de Último Minuto"),
     CONFIRMACION_RESERVA("Confirmación de Reserva"),
-    CLIMA_FAVORABLE("Clima Favorable");
+    CLIMA_FAVORABLE("Clima Favorable"),
+    ENCUESTA_SATISFACCION("Encuesta de Satisfacción");
 
     companion object {
         fun fromString(valor: String): TipoNotificacion {

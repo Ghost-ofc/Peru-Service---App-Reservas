@@ -1,37 +1,22 @@
 package com.grupo4.appreservas.service
 
 /**
- * Servicio para generar códigos QR.
- * El QR contiene el reservaId para que el guía pueda registrar el check-in.
+ * Servicio para generación de códigos QR.
+ * Equivalente a QRService del diagrama UML.
  */
 class QRService {
 
     /**
-     * Genera un código QR que contiene el reservaId.
-     * El formato del QR es: "RESERVA:<reservaId>"
+     * Genera un código QR a partir de datos.
+     * Equivalente a generate(data): QRCode del diagrama UML.
      * 
-     * @param reservaId ID de la reserva a incluir en el QR
-     * @return String con el formato del QR que será codificado visualmente
+     * En una implementación real, esto generaría un Bitmap o imagen QR.
+     * Por ahora, retorna una URL o string que representa el QR.
      */
-    fun generate(reservaId: String): String {
-        // Formato: "RESERVA:<reservaId>" para que sea fácil de parsear
-        // El guía escaneará este código y extraerá el reservaId
-        return "RESERVA:$reservaId"
-    }
-    
-    /**
-     * Extrae el reservaId de un código QR escaneado.
-     * 
-     * @param qrData Datos del QR escaneado
-     * @return reservaId extraído o null si el formato no es válido
-     */
-    fun extraerReservaId(qrData: String): String? {
-        return if (qrData.startsWith("RESERVA:")) {
-            qrData.removePrefix("RESERVA:")
-        } else {
-            // Compatibilidad con formato anterior (código de confirmación)
-            // Intentar buscar la reserva por código QR
-            qrData
-        }
+    fun generate(data: String): String {
+        // En una implementación real, usarías una librería como ZXing
+        // Por ahora, retornamos una representación del código
+        return "QR_CODE_$data"
     }
 }
+

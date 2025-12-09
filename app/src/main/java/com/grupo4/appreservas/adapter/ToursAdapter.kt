@@ -3,87 +3,76 @@ package com.grupo4.appreservas.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.grupo4.appreservas.R
 import com.grupo4.appreservas.modelos.Tour
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 class ToursAdapter(
-    private val tours: List<Tour>,
-    private val onTourClick: (Tour) -> Unit
+    private val onItemClick: (Tour) -> Unit
 ) : RecyclerView.Adapter<ToursAdapter.TourViewHolder>() {
 
-    inner class TourViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvNombre: TextView = view.findViewById(R.id.tv_tour_nombre)
-        val tvFecha: TextView = view.findViewById(R.id.tv_tour_fecha)
-        val tvPunto: TextView = view.findViewById(R.id.tv_tour_punto)
-        val tvParticipantes: TextView = view.findViewById(R.id.tv_tour_participantes)
-        val tvEstado: TextView = view.findViewById(R.id.tv_tour_estado)
-        val btnVerDetalles: android.widget.Button = view.findViewById(R.id.btn_ver_detalles)
+    private var tours = listOf<Tour>()
+
+    fun actualizarLista(nuevaLista: List<Tour>) {
+        tours = nuevaLista
+        notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TourViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_tour_guia, parent, false)
+            .inflate(R.layout.item_tour, parent, false)
         return TourViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: TourViewHolder, position: Int) {
-        val tour = tours[position]
-
-        holder.tvNombre.text = tour.nombre
-        
-        // Formatear fecha en formato legible (ej: "09 Nov 2025 • 09:00")
-        val fechaFormateada = formatearFecha(tour.fecha)
-        holder.tvFecha.text = "$fechaFormateada • ${tour.hora}"
-        holder.tvPunto.text = tour.puntoEncuentro
-
-        // Formato mejorado para participantes
-        val textoParticipantes = if (tour.participantesConfirmados > 0) {
-            "${tour.participantesConfirmados}/${tour.capacidad} turistas confirmados"
-        } else {
-            "0/${tour.capacidad} turistas (sin confirmaciones)"
-        }
-        holder.tvParticipantes.text = textoParticipantes
-
-        holder.tvEstado.text = tour.estado
-
-        // Color según estado del tour
-        val colorEstado = when (tour.estado) {
-            "Completado" -> android.graphics.Color.parseColor("#4CAF50")
-            "En Curso" -> android.graphics.Color.parseColor("#2196F3")
-            "Disponible" -> android.graphics.Color.parseColor("#4CAF50")
-            else -> android.graphics.Color.parseColor("#FF9800") // Pendiente
-        }
-        holder.tvEstado.setTextColor(colorEstado)
-
-        holder.btnVerDetalles.setOnClickListener {
-            onTourClick(tour)
-        }
-    }
-    
-    /**
-     * Formatea una fecha en formato "yyyy-MM-dd" a formato legible "dd MMM yyyy".
-     * Ejemplo: "2025-11-09" -> "09 Nov 2025"
-     */
-    private fun formatearFecha(fechaStr: String): String {
-        return try {
-            val formatoEntrada = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val formatoSalida = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
-            val fecha = formatoEntrada.parse(fechaStr)
-            if (fecha != null) {
-                formatoSalida.format(fecha)
-            } else {
-                fechaStr // Si no se puede parsear, devolver la fecha original
-            }
-        } catch (e: Exception) {
-            fechaStr // Si hay error, devolver la fecha original
-        }
+        holder.bind(tours[position])
     }
 
     override fun getItemCount() = tours.size
+
+    inner class TourViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        
+        private val txtNombreTour: TextView = itemView.findViewById(R.id.txt_nombre_tour)
+        private val txtFechaHora: TextView = itemView.findViewById(R.id.txt_fecha_hora)
+        private val txtPuntoEncuentro: TextView = itemView.findViewById(R.id.txt_punto_encuentro)
+        private val txtParticipantes: TextView = itemView.findViewById(R.id.txt_participantes)
+        private val txtEstado: TextView = itemView.findViewById(R.id.txt_estado)
+
+        fun bind(tour: Tour) {
+            txtNombreTour.text = tour.nombre
+            
+            // Formatear fecha y hora
+            val fechaHora = "${tour.fecha} ${tour.hora}"
+            txtFechaHora.text = fechaHora
+            
+            txtPuntoEncuentro.text = tour.puntoEncuentro
+            txtParticipantes.text = "${tour.participantesConfirmados} de ${tour.capacidad} confirmados"
+            
+            // Estado del tour
+            txtEstado.text = tour.estado
+            when (tour.estado) {
+                "Pendiente" -> {
+                    txtEstado.setBackgroundResource(R.drawable.bg_chip_pendiente)
+                    txtEstado.setTextColor(itemView.context.getColor(android.R.color.holo_orange_dark))
+                }
+                "En Curso" -> {
+                    txtEstado.setBackgroundResource(R.drawable.bg_chip_pendiente)
+                    txtEstado.setTextColor(itemView.context.getColor(android.R.color.holo_blue_dark))
+                }
+                "Completado" -> {
+                    txtEstado.setBackgroundResource(R.drawable.bg_chip_pendiente)
+                    txtEstado.setTextColor(itemView.context.getColor(android.R.color.holo_green_dark))
+                }
+            }
+
+            // Click en toda la card
+            itemView.setOnClickListener {
+                onItemClick(tour)
+            }
+        }
+    }
 }
+

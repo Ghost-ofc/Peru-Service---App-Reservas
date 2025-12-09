@@ -1,402 +1,274 @@
 package com.grupo4.appreservas.ui
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.ProgressBar
+import android.widget.Spinner
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.appbar.MaterialToolbar
+import androidx.lifecycle.ViewModelProvider
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.grupo4.appreservas.R
-import com.grupo4.appreservas.controller.ReservasController
-import com.grupo4.appreservas.repository.ReservasRepository
-import com.grupo4.appreservas.repository.DestinoRepository
-import com.grupo4.appreservas.repository.DatabaseHelper
-import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Destino
-import com.grupo4.appreservas.service.AvailabilityService
-import com.grupo4.appreservas.service.ReservasService
-import com.grupo4.appreservas.service.DestinoService
+import com.grupo4.appreservas.modelos.Reserva
+import com.grupo4.appreservas.repository.PeruvianServiceRepository
+import com.grupo4.appreservas.viewmodel.ReservaViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Activity para realizar reservas de tours.
+ * Corresponde a la HU: Selección de tour y Confirmación de reserva.
+ */
 class ReservasActivity : AppCompatActivity() {
 
-    private lateinit var reservasController: ReservasController
-    private lateinit var availabilityService: AvailabilityService
+    private lateinit var viewModel: ReservaViewModel
     private lateinit var destino: Destino
+    private var destinoId: String = ""
+    private var usuarioId: Int = 2 // Por defecto, se puede pasar desde el intent
 
-    private lateinit var topAppBar: MaterialToolbar
+    // Vistas
     private lateinit var txtDestinoNombre: TextView
     private lateinit var btnSeleccionarFecha: MaterialCardView
     private lateinit var txtFechaSeleccionada: TextView
     private lateinit var spinnerHora: Spinner
     private lateinit var spinnerNumPersonas: Spinner
-    private lateinit var txtPrecioTotal: TextView
     private lateinit var txtCuposDisponibles: TextView
-    private lateinit var btnConfirmarReserva: Button
+    private lateinit var txtPrecioTotal: TextView
+    private lateinit var btnConfirmarReserva: MaterialButton
     private lateinit var progressBar: ProgressBar
 
-    private var fechaSeleccionada: Date? = null
+    // Datos seleccionados
+    private var fechaSeleccionada: String = ""
     private var horaSeleccionada: String = ""
-    private var numPersonasSeleccionadas: Int = 1
+    private var cantidadPersonas: Int = 1
     private var tourSlotId: String = ""
-    private var usuarioId: Int = 0
-    
-    // Fechas y horas disponibles desde la base de datos
-    private var fechasDisponibles: List<String> = emptyList()
-    private var horasDisponibles: List<String> = emptyList()
-
-    private val dateFormat = SimpleDateFormat("dd 'de' MMMM 'de' yyyy", Locale("es", "ES"))
-    private val dateFormatId = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reservation)
 
-        obtenerUsuarioId()
+        // Obtener datos del intent
+        destinoId = intent.getStringExtra("DESTINO_ID") ?: ""
+        usuarioId = intent.getIntExtra("USUARIO_ID", 2)
+
+        if (destinoId.isEmpty()) {
+            Toast.makeText(this, "Error: No se proporcionó información del destino", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+
         inicializarDependencias()
-        obtenerDestino()
-        cargarFechasDisponibles() // Cargar fechas disponibles desde BD
         inicializarVistas()
-        configurarSpinners()
-    }
-
-    private fun obtenerUsuarioId() {
-        usuarioId = intent.getIntExtra("USUARIO_ID", 0)
-        if (usuarioId == 0) {
-            // Si no viene en el intent, intentar obtenerlo de otra forma
-            // Por ahora, usamos un valor por defecto temporal
-            Toast.makeText(this, "Usuario no identificado", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun obtenerDestino() {
-        // Prioridad 1: Intentar obtener por ID usando el controlador (método preferido)
-        val destinoId = intent.getStringExtra("DESTINO_ID")
-        if (destinoId != null && destinoId.isNotEmpty()) {
-            destino = reservasController.iniciarReserva(destinoId)
-                ?: run {
-                    Toast.makeText(this, "El destino solicitado no existe", Toast.LENGTH_SHORT).show()
-                    finish()
-                    return
-                }
-            return
-        }
-        
-        // Prioridad 2: Compatibilidad con código existente (objeto serializado)
-        val destinoExtra = intent.getSerializableExtra("DESTINO") as? Destino
-        if (destinoExtra != null) {
-            // Si viene objeto serializado, cargar desde BD para datos actualizados
-            destino = reservasController.iniciarReserva(destinoExtra.id) ?: destinoExtra
-            return
-        }
-        
-        // Error: No se proporcionó información del destino
-        Toast.makeText(this, "Error al cargar destino", Toast.LENGTH_SHORT).show()
-        finish()
+        cargarDestino()
+        configurarListeners()
     }
 
     private fun inicializarDependencias() {
-        val destinoRepo = DestinoRepository.getInstance(this)
-        val bookingRepo = ReservasRepository.getInstance(this)
-        val destinoService = DestinoService(destinoRepo)
-        availabilityService = AvailabilityService(destinoRepo, bookingRepo)
-        val reservasService = ReservasService(bookingRepo, destinoRepo, availabilityService, this)
+        val repository = PeruvianServiceRepository.getInstance(this)
+        viewModel = ViewModelProvider(this, ReservaViewModelFactory(repository))[ReservaViewModel::class.java]
 
-        reservasController = ReservasController(reservasService, availabilityService, destinoService)
-    }
-    
-    /**
-     * Carga las fechas disponibles para el destino desde la base de datos.
-     */
-    private fun cargarFechasDisponibles() {
-        try {
-            val dbHelper = DatabaseHelper(this)
-            fechasDisponibles = dbHelper.obtenerFechasDisponiblesPorDestino(destino.id)
-            
-            if (fechasDisponibles.isEmpty()) {
-                Toast.makeText(this, "No hay fechas disponibles para este destino", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error al cargar fechas disponibles", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
+        // Observar cambios en cupos disponibles
+        viewModel.cuposDisponibles.observe(this) { cupos ->
+            actualizarCuposDisponibles(cupos)
+        }
+
+        // Observar cambios en disponibilidad
+        viewModel.disponibilidad.observe(this) { disponible ->
+            btnConfirmarReserva.isEnabled = disponible && fechaSeleccionada.isNotEmpty() && horaSeleccionada.isNotEmpty()
         }
     }
 
     private fun inicializarVistas() {
-        topAppBar = findViewById(R.id.topAppBar)
         txtDestinoNombre = findViewById(R.id.txtDestinoNombre)
         btnSeleccionarFecha = findViewById(R.id.btnSeleccionarFecha)
         txtFechaSeleccionada = findViewById(R.id.txtFechaSeleccionada)
         spinnerHora = findViewById(R.id.spinnerHora)
         spinnerNumPersonas = findViewById(R.id.spinnerNumPersonas)
-        txtPrecioTotal = findViewById(R.id.txtPrecioTotal)
         txtCuposDisponibles = findViewById(R.id.txtCuposDisponibles)
+        txtPrecioTotal = findViewById(R.id.txtPrecioTotal)
         btnConfirmarReserva = findViewById(R.id.btnConfirmarReserva)
         progressBar = findViewById(R.id.progressBar)
 
         // Configurar toolbar
-        topAppBar.setNavigationOnClickListener {
-            finish()
-        }
+        findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.topAppBar)
+            .setNavigationOnClickListener {
+                finish()
+            }
+    }
+
+    private fun cargarDestino() {
+        val repository = PeruvianServiceRepository.getInstance(this)
+        destino = repository.buscarDestinoPorId(destinoId)
+            ?: run {
+                Toast.makeText(this, "Error: Destino no encontrado", Toast.LENGTH_SHORT).show()
+                finish()
+                return
+            }
 
         txtDestinoNombre.text = destino.nombre
+        configurarSpinnerPersonas()
+    }
 
+    private fun configurarSpinnerPersonas() {
+        val opciones = (1..destino.maxPersonas).map { it.toString() }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, opciones)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerNumPersonas.adapter = adapter
+
+        spinnerNumPersonas.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                cantidadPersonas = (position + 1)
+                actualizarPrecioTotal()
+                consultarDisponibilidad()
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+    }
+
+    private fun configurarListeners() {
         // Seleccionar fecha
         btnSeleccionarFecha.setOnClickListener {
-            mostrarDatePicker()
+            mostrarSelectorFecha()
         }
 
         // Confirmar reserva
         btnConfirmarReserva.setOnClickListener {
             confirmarReserva()
         }
-
-        actualizarPrecioTotal()
     }
 
-    private fun configurarSpinners() {
-        // Spinner de horas - se actualizará dinámicamente cuando se seleccione una fecha
-        actualizarSpinnerHoras(emptyList())
-        
-        spinnerHora.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (horasDisponibles.isNotEmpty() && position < horasDisponibles.size) {
-                    horaSeleccionada = horasDisponibles[position]
-                    // Actualizar disponibilidad si ya hay fecha seleccionada
-                    if (fechaSeleccionada != null) {
-                        consultarDisponibilidad()
-                    }
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
+    private fun mostrarSelectorFecha() {
+        val calendario = Calendar.getInstance()
+        val anio = calendario.get(Calendar.YEAR)
+        val mes = calendario.get(Calendar.MONTH)
+        val dia = calendario.get(Calendar.DAY_OF_MONTH)
 
-        // Spinner de personas
-        val opcionesPersonas = (1..destino.maxPersonas).toList()
-        val personasAdapter = ArrayAdapter(
+        val datePicker = DatePickerDialog(
             this,
-            android.R.layout.simple_spinner_item,
-            opcionesPersonas.map { "$it persona${if (it > 1) "s" else ""}" }
+            { _, year, month, dayOfMonth ->
+                val fechaSeleccionadaCal = Calendar.getInstance()
+                fechaSeleccionadaCal.set(year, month, dayOfMonth)
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                fechaSeleccionada = dateFormat.format(fechaSeleccionadaCal.time)
+                txtFechaSeleccionada.text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                    .format(fechaSeleccionadaCal.time)
+                
+                cargarHorasDisponibles()
+            },
+            anio, mes, dia
         )
-        personasAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerNumPersonas.adapter = personasAdapter
 
-        spinnerNumPersonas.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                numPersonasSeleccionadas = position + 1
-                actualizarPrecioTotal()
-                if (fechaSeleccionada != null) {
-                    consultarDisponibilidad()
-                }
-            }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
+        // Establecer fecha mínima como hoy
+        datePicker.datePicker.minDate = System.currentTimeMillis() - 1000
+        datePicker.show()
     }
 
-    private fun mostrarDatePicker() {
-        if (fechasDisponibles.isEmpty()) {
-            Toast.makeText(this, "No hay fechas disponibles para este destino", Toast.LENGTH_SHORT).show()
+    private fun cargarHorasDisponibles() {
+        if (fechaSeleccionada.isEmpty()) return
+
+        val repository = PeruvianServiceRepository.getInstance(this)
+        val horas = repository.obtenerHorasDisponibles(destinoId, fechaSeleccionada)
+
+        if (horas.isEmpty()) {
+            Toast.makeText(this, "No hay horarios disponibles para esta fecha", Toast.LENGTH_SHORT).show()
             return
         }
-        
-        // Determinar fecha inicial para el calendario
-        val fechaInicial = fechaSeleccionada ?: run {
-            // Si no hay fecha seleccionada, usar la primera disponible
-            if (fechasDisponibles.isNotEmpty()) {
-                dateFormatId.parse(fechasDisponibles.first())
-            } else {
-                null
-            }
-        }
-        
-        val calendarDialog = CalendarPickerDialog(
-            this,
-            fechasDisponibles,
-            { fecha ->
-                fechaSeleccionada = fecha
-                val fechaSeleccionadaStr = dateFormatId.format(fecha)
-                txtFechaSeleccionada.text = dateFormat.format(fecha)
-                
-                // Cargar horas disponibles para la fecha seleccionada
-                cargarHorasDisponibles(fechaSeleccionadaStr)
-                
-                generarTourSlotId()
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, horas)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerHora.adapter = adapter
+
+        spinnerHora.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                horaSeleccionada = horas[position]
+                actualizarTourSlotId()
                 consultarDisponibilidad()
-                actualizarPrecioTotal()
-            },
-            fechaInicial
-        )
-        
-        calendarDialog.show()
-    }
-    
-    /**
-     * Carga las horas disponibles para una fecha específica desde la base de datos.
-     */
-    private fun cargarHorasDisponibles(fecha: String) {
-        try {
-            val dbHelper = DatabaseHelper(this)
-            horasDisponibles = dbHelper.obtenerHorasDisponiblesPorDestinoYFecha(destino.id, fecha)
-            
-            if (horasDisponibles.isEmpty()) {
-                Toast.makeText(this, "No hay horas disponibles para esta fecha", Toast.LENGTH_SHORT).show()
-                horaSeleccionada = ""
-            } else {
-                // Actualizar el spinner de horas con las horas disponibles
-                actualizarSpinnerHoras(horasDisponibles)
-                
-                // Seleccionar la primera hora por defecto
-                if (horasDisponibles.isNotEmpty()) {
-                    horaSeleccionada = horasDisponibles[0]
-                    spinnerHora.setSelection(0)
-                }
             }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error al cargar horas disponibles", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
-    }
-    
-    /**
-     * Actualiza el spinner de horas con las horas disponibles.
-     */
-    private fun actualizarSpinnerHoras(horas: List<String>) {
-        val horaAdapter = if (horas.isEmpty()) {
-            ArrayAdapter(
-                this,
-                android.R.layout.simple_spinner_item,
-                listOf("No hay horas disponibles")
-            )
-        } else {
-            ArrayAdapter(
-                this,
-                android.R.layout.simple_spinner_item,
-                horas
-            )
-        }
-        horaAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerHora.adapter = horaAdapter
     }
 
-    private fun generarTourSlotId() {
-        fechaSeleccionada?.let { fecha ->
-            val fechaStr = dateFormatId.format(fecha)
-            // Formato: destinoId_fecha (sin hora, ya que los slots se manejan por fecha)
-            // La hora se almacena en la reserva, no en el slot
-            tourSlotId = "${destino.id}_$fechaStr"
-        }
+    private fun actualizarTourSlotId() {
+        // El tourSlotId tiene formato: destinoId_fecha
+        tourSlotId = "${destinoId}_$fechaSeleccionada"
     }
 
     private fun consultarDisponibilidad() {
         if (tourSlotId.isEmpty()) return
 
-        try {
-            val disponibilidad = reservasController.consultarDisponibilidad(tourSlotId)
-            val cuposDisp = disponibilidad["cuposDisponibles"] as? Int ?: 0
+        viewModel.consultarDisponibilidadAsientos(tourSlotId)
+    }
 
-            txtCuposDisponibles.text = "$cuposDisp cupos disponibles"
+    private fun actualizarCuposDisponibles(cupos: Int) {
+        if (cupos > 0) {
+            txtCuposDisponibles.text = "$cupos cupos disponibles"
             txtCuposDisponibles.visibility = View.VISIBLE
-
-            btnConfirmarReserva.isEnabled = cuposDisp >= numPersonasSeleccionadas
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error al consultar disponibilidad", Toast.LENGTH_SHORT).show()
-            btnConfirmarReserva.isEnabled = false
+        } else {
+            txtCuposDisponibles.text = "Sin cupos disponibles"
+            txtCuposDisponibles.visibility = View.VISIBLE
         }
     }
 
     private fun actualizarPrecioTotal() {
-        val total = destino.precio * numPersonasSeleccionadas
-        txtPrecioTotal.text = "Total: S/ $total"
+        val precioTotal = destino.precio * cantidadPersonas
+        txtPrecioTotal.text = "Total: S/ ${String.format("%.2f", precioTotal)}"
     }
 
     private fun confirmarReserva() {
-        if (fechaSeleccionada == null) {
-            Toast.makeText(this, "Por favor selecciona una fecha", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        if (horaSeleccionada.isEmpty()) {
-            Toast.makeText(this, "Por favor selecciona una hora", Toast.LENGTH_SHORT).show()
+        if (fechaSeleccionada.isEmpty() || horaSeleccionada.isEmpty()) {
+            Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Mostrar diálogo de confirmación/resumen antes de crear la reserva
-        mostrarResumenReserva()
-    }
-
-    /**
-     * Muestra un resumen de la reserva para confirmación.
-     * Equivalente a ReservationView.confirm(resumen) del diagrama UML.
-     */
-    private fun mostrarResumenReserva() {
-        val precioTotal = destino.precio * numPersonasSeleccionadas
-        val fechaFormateada = fechaSeleccionada?.let { dateFormat.format(it) } ?: "No seleccionada"
-        
-        val resumen = """
-            Destino: ${destino.nombre}
-            Fecha: $fechaFormateada
-            Hora: $horaSeleccionada
-            Pasajeros: $numPersonasSeleccionadas
-            Precio por persona: S/ ${String.format("%.2f", destino.precio)}
-            Precio total: S/ ${String.format("%.2f", precioTotal)}
-        """.trimIndent()
-
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Confirmar Reserva")
-            .setMessage(resumen)
-            .setPositiveButton("Confirmar") { _, _ ->
-                crearReserva()
-            }
-            .setNegativeButton("Cancelar", null)
-            .setCancelable(true)
-            .show()
-    }
-
-    /**
-     * Crea la reserva después de la confirmación del usuario.
-     */
-    private fun crearReserva() {
         progressBar.visibility = View.VISIBLE
         btnConfirmarReserva.isEnabled = false
 
-        try {
-            val seatsLocked = reservasController.lockSeats(tourSlotId, numPersonasSeleccionadas)
+        // Crear la reserva
+        val reserva = viewModel.crearReserva(usuarioId, tourSlotId, cantidadPersonas)
 
-            if (seatsLocked) {
-                val booking = reservasController.crearReservaCmd(
-                    userId = usuarioId.toString(),
-                    tourSlotId = tourSlotId,
-                    pax = numPersonasSeleccionadas,
-                    horaInicio = horaSeleccionada
-                )
+        progressBar.visibility = View.GONE
 
-                if (booking != null) {
-                    irAPago(booking)
-                } else {
-                    Toast.makeText(this, "Error al crear reserva", Toast.LENGTH_SHORT).show()
-                    // Liberar cupos bloqueados si falla la creación
-                    availabilityService.liberarCupos(tourSlotId, numPersonasSeleccionadas)
-                }
-            } else {
-                Toast.makeText(this, "No hay cupos suficientes", Toast.LENGTH_SHORT).show()
-            }
-
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
-        } finally {
-            progressBar.visibility = View.GONE
+        if (reserva != null) {
+            Toast.makeText(
+                this,
+                "Reserva creada exitosamente. Procede al pago.",
+                Toast.LENGTH_SHORT
+            ).show()
+            
+            // Redirigir a la pantalla de pago
+            val intent = Intent(this, PaymentActivity::class.java)
+            intent.putExtra("RESERVA_ID", reserva.id)
+            startActivity(intent)
+            finish()
+        } else {
+            Toast.makeText(
+                this,
+                "Error: No se pudo crear la reserva. Verifica la disponibilidad.",
+                Toast.LENGTH_SHORT
+            ).show()
             btnConfirmarReserva.isEnabled = true
         }
     }
+}
 
-    private fun irAPago(reserva: Reserva) {
-        val intent = Intent(this, PagoActivity::class.java)
-        intent.putExtra("BOOKING", reserva)
-        startActivity(intent)
-        finish()
+/**
+ * Factory para crear ReservaViewModel con dependencias.
+ */
+class ReservaViewModelFactory(
+    private val repository: PeruvianServiceRepository
+) : ViewModelProvider.Factory {
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(ReservaViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return ReservaViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+

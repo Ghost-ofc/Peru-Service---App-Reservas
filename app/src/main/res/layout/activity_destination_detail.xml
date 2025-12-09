@@ -52,8 +52,7 @@
             app:navigationIconTint="@android:color/white"
             app:title="Peruvian Service"
             app:titleCentered="true"
-            app:titleTextColor="@android:color/white"
-            app:menu="@menu/menu_topbar" />
+            app:titleTextColor="@android:color/white" />
     </FrameLayout>
 
     <!-- Contenido scrollable con tarjeta redondeada -->

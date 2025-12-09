@@ -6,24 +6,90 @@
     android:layout_height="match_parent"
     android:background="@color/color_background">
 
-    <!-- Top App Bar -->
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
+    <!-- Top Bar personalizado -->
+    <LinearLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical"
         android:background="@color/color_surface"
-        app:elevation="0dp">
+        android:elevation="2dp">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/topAppBar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/color_surface"
-            app:title="@string/app_name"
-            app:titleCentered="true"
-            app:titleTextColor="@color/color_text"
-            app:menu="@menu/menu_topbar"/>
-    </com.google.android.material.appbar.AppBarLayout>
+        <!-- Logo circular con "PE" -->
+        <TextView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="PE"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:gravity="center"
+            android:background="@drawable/circle_pe_bg"
+            android:contentDescription="Peruvian Service"/>
+
+        <!-- Nombre de la app -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Peruvian Service"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/color_text"
+            android:layout_marginStart="12dp"/>
+
+        <!-- Icono de notificaciones con badge -->
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp">
+
+            <ImageView
+                android:id="@+id/iv_notificaciones"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_notifications"
+                android:tint="@color/color_text"
+                android:contentDescription="Notificaciones"/>
+
+            <!-- Badge de notificaciones -->
+            <TextView
+                android:id="@+id/tv_badge_notificaciones"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:text="2"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:gravity="center"
+                android:background="@drawable/circle_badge_red"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="-4dp"
+                android:layout_marginEnd="-4dp"
+                android:visibility="gone"/>
+        </FrameLayout>
+
+        <!-- Icono de perfil -->
+        <ImageView
+            android:id="@+id/iv_perfil"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_person_24"
+            android:tint="@color/color_text"
+            android:contentDescription="Perfil"
+            android:layout_marginEnd="12dp"/>
+
+        <!-- Icono de logout -->
+        <ImageView
+            android:id="@+id/iv_logout"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_logout_24"
+            android:tint="#D32F2F"
+            android:contentDescription="Cerrar sesión"/>
+    </LinearLayout>
 
     <!-- Contenido principal -->
     <androidx.core.widget.NestedScrollView
