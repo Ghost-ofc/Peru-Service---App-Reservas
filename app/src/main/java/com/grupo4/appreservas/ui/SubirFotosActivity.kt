@@ -157,7 +157,7 @@ class SubirFotosActivity : AppCompatActivity() {
             data?.let {
                 if (it.clipData != null) {
                     // Múltiples imágenes seleccionadas
-                    val clipData = it.clipData
+                    val clipData = it.clipData!!
                     for (i in 0 until clipData.itemCount) {
                         val uri = clipData.getItemAt(i).uri
                         fotosSeleccionadas.add(uri)

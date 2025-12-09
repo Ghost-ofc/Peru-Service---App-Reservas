@@ -95,7 +95,7 @@ class IntegracionEncuestaTest {
         // Mock: Tour existe y usuario no ha respondido
         every { anyConstructed<DatabaseHelper>().obtenerTourPorId(tourId) } returns tour
         every { anyConstructed<DatabaseHelper>().existeEncuestaRespuesta(tourId, usuarioId.toString()) } returns false
-        every { anyConstructed<DatabaseHelper>().obtenerRecordatorios(usuarioId) } returns emptyList()
+        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
 
         // Act: Enviar encuesta automática
         val exito = repository.enviarEncuestaAutomatica(tourId, usuarioId)
@@ -219,10 +219,10 @@ class IntegracionEncuestaTest {
         every { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, 50) } returns true
 
         // Act: Registrar respuesta
-        val exito = repository.guardarRespuestaEncuesta(tourId, usuarioId, calificacion, comentario)
+        val respuesta = repository.guardarRespuestaEncuesta(tourId, usuarioId, calificacion, comentario)
 
         // Assert: Verificar que se sumaron los puntos
-        assertTrue("Debe guardarse correctamente", exito)
+        assertNotNull("Debe guardarse correctamente", respuesta)
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, 50) }
     }
 
@@ -260,7 +260,7 @@ class IntegracionEncuestaTest {
         every { anyConstructed<DatabaseHelper>().insertarNotificacion(any()) } returns 1L
         every { anyConstructed<DatabaseHelper>().insertarEncuestaRespuesta(any()) } returns 1L
         every { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, 50) } returns true
-        every { anyConstructed<DatabaseHelper>().obtenerRecordatorios(usuarioId) } returns emptyList()
+        every { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) } returns emptyList()
 
         // Act 1: Enviar encuesta automática
         val encuestaEnviada = repository.enviarEncuestaAutomatica(tourId, usuarioId)
@@ -275,7 +275,7 @@ class IntegracionEncuestaTest {
         val respuestaGuardada = repository.guardarRespuestaEncuesta(tourId, usuarioId, calificacion, comentario)
 
         // Assert 2: Verificar que se guardó y se sumaron puntos
-        assertTrue(respuestaGuardada)
+        assertNotNull("La respuesta debe guardarse correctamente", respuestaGuardada)
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarEncuestaRespuesta(any()) }
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, 50) }
     }

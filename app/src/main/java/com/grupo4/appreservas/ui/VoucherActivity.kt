@@ -101,9 +101,9 @@ class VoucherActivity : AppCompatActivity() {
         val cardPuntos = findViewById<com.google.android.material.card.MaterialCardView>(R.id.cardPuntosGanados)
         if (cardPuntos != null && puntosGanados > 0) {
             cardPuntos.visibility = android.view.View.VISIBLE
-            // Si hay un TextView para mostrar los puntos, actualizarlo
-            val tvPuntos = cardPuntos.findViewById<TextView>(R.id.tvPuntosGanados)
-            tvPuntos?.text = "+$puntosGanados puntos"
+            // Actualizar el TextView que muestra los puntos
+            val tvPuntos = findViewById<TextView>(R.id.txtPuntosGanados)
+            tvPuntos?.text = "+$puntosGanados"
         }
     }
 

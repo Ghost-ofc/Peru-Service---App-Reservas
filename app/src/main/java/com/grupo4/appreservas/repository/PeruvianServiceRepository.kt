@@ -13,7 +13,6 @@ import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Rol
 import com.grupo4.appreservas.modelos.TipoLogro
-import com.grupo4.appreservas.modelos.TipoNotificacion
 import com.grupo4.appreservas.modelos.Tour
 import com.grupo4.appreservas.modelos.TourSlot
 import com.grupo4.appreservas.modelos.Usuario
