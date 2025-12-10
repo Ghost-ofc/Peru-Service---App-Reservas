@@ -126,23 +126,15 @@ class IntegracionEncuestaTest {
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         viewModel = EncuestaViewModel(application)
 
-        // Observador
-        val mensajeObserver = mockk<Observer<String>>(relaxed = true)
-        val encuestaEnviadaObserver = mockk<Observer<Boolean>>(relaxed = true)
-        viewModel.mensajeEstado.observeForever(mensajeObserver)
-        viewModel.encuestaEnviada.observeForever(encuestaEnviadaObserver)
-
         // Act: Registrar respuesta
         viewModel.registrarRespuesta(tourId, usuarioId, calificacion, comentario)
+        
+        // Avanzar el scheduler para ejecutar todas las coroutines
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Assert: Verificar que se guardó la respuesta
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarEncuestaRespuesta(any()) }
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, 50) }
-        
-        // Verificar que se actualizó el LiveData
-        verify { mensajeObserver.onChanged(any()) }
-        verify { encuestaEnviadaObserver.onChanged(true) }
         
         // Verificar que la respuesta se guardó correctamente
         val capturaEncuesta = slot<EncuestaRespuesta>()
@@ -151,6 +143,21 @@ class IntegracionEncuestaTest {
         assertEquals(usuarioId.toString(), capturaEncuesta.captured.usuarioId)
         assertEquals(calificacion, capturaEncuesta.captured.calificacion)
         assertEquals(comentario, capturaEncuesta.captured.comentario)
+        
+        // Verificar que se actualizó el LiveData verificando los valores directamente
+        // Nota: Debido a que viewModelScope puede no usar el test dispatcher correctamente,
+        // verificamos los valores del LiveData en lugar de los observers
+        val mensajeEstado = viewModel.mensajeEstado.value
+        val encuestaEnviada = viewModel.encuestaEnviada.value
+        val respuestaEncuesta = viewModel.respuestaEncuesta.value
+        
+        assertNotNull("El mensaje de estado debe actualizarse", mensajeEstado)
+        assertTrue("La encuesta debe marcarse como enviada", encuestaEnviada == true)
+        assertNotNull("La respuesta de encuesta debe guardarse", respuestaEncuesta)
+        assertEquals(tourId, respuestaEncuesta?.idTour)
+        assertEquals(usuarioId.toString(), respuestaEncuesta?.usuarioId)
+        assertEquals(calificacion, respuestaEncuesta?.calificacion)
+        assertEquals(comentario, respuestaEncuesta?.comentario)
     }
 
     @Test

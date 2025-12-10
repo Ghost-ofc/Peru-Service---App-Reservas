@@ -12,7 +12,9 @@ import com.grupo4.appreservas.viewmodel.AutenticacionViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -99,7 +101,7 @@ class IntegracionAutenticacionTest {
     }
 
     @Test
-    fun `test HU-004 Escenario 1 - Registro de usuario sin rol asigna rol turista por defecto`() = runTest {
+    fun `test HU-004 Escenario 1 - Registro de usuario sin rol asigna rol turista por defecto`() = runTest(testDispatcher) {
         // Arrange: Datos de registro sin especificar rol
         val nombreCompleto = "Juan Pérez"
         val nombreUsuario = "juan@example.com"
@@ -133,25 +135,42 @@ class IntegracionAutenticacionTest {
 
         // Observador para LiveData
         val usuarioObserver = mockk<Observer<Usuario?>>(relaxed = true)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
         viewModel.usuarioAutenticado.observeForever(usuarioObserver)
+        viewModel.mensajeEstado.observeForever(mensajeObserver)
 
         // Act: Registrar usuario sin especificar rol (debe asignar turista por defecto)
         viewModel.registrarUsuario(nombreCompleto, nombreUsuario, contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
+
+        // Verificar si hubo algún error
+        val mensajeError = viewModel.mensajeEstado.value
+        if (mensajeError != null && mensajeError.contains("Error")) {
+            fail("Error al registrar usuario: $mensajeError")
+        }
 
         // Assert: Verificar que se creó el usuario
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarUsuario(any()) }
-        verify { usuarioObserver.onChanged(any()) }
         
         // Verificar que el usuario tiene el rol por defecto (turista)
-        assertNotNull(usuarioInsertado)
+        assertNotNull("El usuario debe haberse insertado", usuarioInsertado)
         assertEquals(2, usuarioInsertado?.rolId) // Debe ser turista (rol por defecto)
+        
+        // Verificar que el LiveData se actualizó
+        val usuarioAutenticado = viewModel.usuarioAutenticado.value
+        assertNotNull("El usuario debe estar autenticado. Mensaje de error: $mensajeError", usuarioAutenticado)
+        assertEquals(2, usuarioAutenticado?.rolId)
+        
         val rol = repository.obtenerRol(2)
         assertEquals("Turista", rol?.nombreRol)
     }
 
     @Test
-    fun `test HU-004 Escenario 2 - Inicio de sesión con credenciales correctas redirige según rol`() = runTest {
+    fun `test HU-004 Escenario 2 - Inicio de sesión con credenciales correctas redirige según rol`() = runTest(testDispatcher) {
         // Arrange: Usuario existente
         val nombreUsuario = "test@example.com"
         val contrasena = "password123"
@@ -176,7 +195,11 @@ class IntegracionAutenticacionTest {
 
         // Act: Iniciar sesión
         viewModel.iniciarSesion(nombreUsuario, contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se validaron las credenciales
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().buscarUsuarioPorCorreo(nombreUsuario) }
@@ -189,7 +212,7 @@ class IntegracionAutenticacionTest {
     }
 
     @Test
-    fun `test inicio de sesión con credenciales incorrectas muestra mensaje de error`() = runTest {
+    fun `test inicio de sesión con credenciales incorrectas muestra mensaje de error`() = runTest(testDispatcher) {
         // Arrange: Usuario existente con contraseña diferente
         val nombreUsuario = "test@example.com"
         val contrasenaCorrecta = "password123"
@@ -214,7 +237,11 @@ class IntegracionAutenticacionTest {
 
         // Act: Iniciar sesión con contraseña incorrecta
         viewModel.iniciarSesion(nombreUsuario, contrasenaIncorrecta)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que no se autenticó
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().buscarUsuarioPorCorreo(nombreUsuario) }
@@ -225,7 +252,7 @@ class IntegracionAutenticacionTest {
     }
 
     @Test
-    fun `test registro con rol específico asigna el rol correcto`() = runTest {
+    fun `test registro con rol específico asigna el rol correcto`() = runTest(testDispatcher) {
         // Arrange: Registrar con rol específico
         val nombreCompleto = "Admin Test"
         val nombreUsuario = "admin@example.com"
@@ -256,20 +283,37 @@ class IntegracionAutenticacionTest {
 
         // Observador
         val usuarioObserver = mockk<Observer<Usuario?>>(relaxed = true)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
         viewModel.usuarioAutenticado.observeForever(usuarioObserver)
+        viewModel.mensajeEstado.observeForever(mensajeObserver)
 
         // Act: Registrar con rol específico
         viewModel.registrarUsuario(nombreCompleto, nombreUsuario, contrasena, rolId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
+
+        // Verificar si hubo algún error
+        val mensajeError = viewModel.mensajeEstado.value
+        if (mensajeError != null && mensajeError.contains("Error")) {
+            fail("Error al registrar usuario: $mensajeError")
+        }
 
         // Assert: Verificar que se creó con el rol especificado
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarUsuario(any()) }
-        assertNotNull(usuarioInsertado)
+        assertNotNull("El usuario debe haberse insertado", usuarioInsertado)
         assertEquals(rolId, usuarioInsertado?.rolId)
+        
+        // Verificar que el LiveData se actualizó
+        val usuarioAutenticado = viewModel.usuarioAutenticado.value
+        assertNotNull("El usuario debe estar autenticado. Mensaje de error: $mensajeError", usuarioAutenticado)
+        assertEquals(rolId, usuarioAutenticado?.rolId)
     }
 
     @Test
-    fun `test contraseña se hashea correctamente con SHA-256`() = runTest {
+    fun `test contraseña se hashea correctamente con SHA-256`() = runTest(testDispatcher) {
         // Arrange
         val contrasena = "password123"
         val hashEsperado = hashSHA256(contrasena)
@@ -294,7 +338,6 @@ class IntegracionAutenticacionTest {
 
         // Act: Crear usuario (esto hashea la contraseña)
         val usuario = repository.crearUsuario("Test", "test@example.com", contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
 
         // Assert: Verificar que la contraseña está hasheada
         assertNotEquals(contrasena, usuario.contrasena)
@@ -302,7 +345,7 @@ class IntegracionAutenticacionTest {
     }
 
     @Test
-    fun `test flujo completo de registro e inicio de sesión`() = runTest {
+    fun `test flujo completo de registro e inicio de sesión`() = runTest(testDispatcher) {
         // Arrange: Datos de registro
         val nombreCompleto = "Nuevo Usuario"
         val nombreUsuario = "nuevo@example.com"
@@ -335,7 +378,11 @@ class IntegracionAutenticacionTest {
 
         // Act 1: Registrar
         viewModel.registrarUsuario(nombreCompleto, nombreUsuario, contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert 1: Verificar registro
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().insertarUsuario(any()) }
@@ -353,7 +400,11 @@ class IntegracionAutenticacionTest {
         }
 
         viewModel.iniciarSesion(nombreUsuario, contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert 2: Verificar inicio de sesión
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().buscarUsuarioPorCorreo(nombreUsuario) }
@@ -361,7 +412,7 @@ class IntegracionAutenticacionTest {
     }
 
     @Test
-    fun `test obtenerUsuarioActual retorna usuario autenticado`() = runTest {
+    fun `test obtenerUsuarioActual retorna usuario autenticado`() = runTest(testDispatcher) {
         // Arrange: Usuario autenticado
         val nombreUsuario = "test@example.com"
         val contrasena = "password123"
@@ -377,14 +428,31 @@ class IntegracionAutenticacionTest {
         // Mock: Buscar usuario
         every { anyConstructed<DatabaseHelper>().buscarUsuarioPorCorreo(nombreUsuario) } returns usuario
 
+        // Observador
+        val usuarioObserver = mockk<Observer<Usuario?>>(relaxed = true)
+        val mensajeObserver = mockk<Observer<String?>>(relaxed = true)
+        viewModel.usuarioAutenticado.observeForever(usuarioObserver)
+        viewModel.mensajeEstado.observeForever(mensajeObserver)
+
         // Act: Iniciar sesión
         viewModel.iniciarSesion(nombreUsuario, contrasena)
-        testDispatcher.scheduler.advanceUntilIdle()
+        
+        // Avanzar el scheduler y permitir que las coroutines se completen
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
+
+        // Verificar si hubo algún error
+        val mensajeError = viewModel.mensajeEstado.value
+        if (mensajeError != null && mensajeError.contains("Error")) {
+            fail("Error al iniciar sesión: $mensajeError")
+        }
 
         // Assert: Verificar que obtenerUsuarioActual retorna el usuario
         val usuarioActual = viewModel.obtenerUsuarioActual()
-        assertNotNull(usuarioActual)
+        assertNotNull("El usuario actual debe estar autenticado. Mensaje de error: $mensajeError", usuarioActual)
         assertEquals(usuario.usuarioId, usuarioActual?.usuarioId)
+        assertEquals(usuario.correo, usuarioActual?.correo)
     }
 
     private fun hashSHA256(input: String): String {
