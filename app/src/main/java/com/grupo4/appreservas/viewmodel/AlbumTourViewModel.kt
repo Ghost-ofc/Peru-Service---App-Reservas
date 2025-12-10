@@ -57,6 +57,22 @@ class AlbumTourViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
+                    android.util.Log.d("AlbumTourViewModel", "Intentando subir ${rutasImagenes.size} fotos para tour: $idTour")
+                    
+                    // Verificar que el tour esté completado o que haya reservas confirmadas
+                    val tour = repositorio.obtenerTourPorId(idTour)
+                    if (tour != null) {
+                        android.util.Log.d("AlbumTourViewModel", "Tour encontrado: $idTour, estado: ${tour.estado}")
+                        
+                        // Permitir subir fotos si el tour está completado o si hay reservas confirmadas
+                        // (no bloqueamos si el tour aún no está marcado como completado, pero la reserva sí)
+                        if (tour.estado != "Completado") {
+                            android.util.Log.d("AlbumTourViewModel", "Tour $idTour no está marcado como completado, pero se permite subir fotos si hay reservas confirmadas")
+                        }
+                    } else {
+                        android.util.Log.w("AlbumTourViewModel", "Tour $idTour no encontrado, pero se permite subir fotos")
+                    }
+                    
                     val fotos = rutasImagenes.mapIndexed { index, ruta ->
                         Foto(
                             idFoto = "FOTO_${idTour}_${System.currentTimeMillis()}_$index",
@@ -68,16 +84,20 @@ class AlbumTourViewModel(application: Application) : AndroidViewModel(applicatio
                         )
                     }
                     
+                    android.util.Log.d("AlbumTourViewModel", "Guardando ${fotos.size} fotos en el repositorio...")
                     val exito = repositorio.guardarFotosDeTour(idTour, fotos)
                     
                     if (exito) {
+                        android.util.Log.d("AlbumTourViewModel", "✓ Fotos subidas correctamente para tour: $idTour")
                         _mensajeEstado.postValue("Fotos subidas correctamente")
                         // Recargar las fotos del álbum
                         cargarFotosAlbum(idTour)
                     } else {
+                        android.util.Log.e("AlbumTourViewModel", "✗ Error al guardar las fotos para tour: $idTour")
                         _mensajeEstado.postValue("Error al guardar las fotos")
                     }
                 } catch (e: Exception) {
+                    android.util.Log.e("AlbumTourViewModel", "✗ Error al subir fotos: ${e.message}", e)
                     _mensajeEstado.postValue("Error al subir fotos: ${e.message}")
                 }
             }

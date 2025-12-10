@@ -1,6 +1,8 @@
 package com.grupo4.appreservas.ui
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -187,6 +189,10 @@ class PaymentActivity : AppCompatActivity() {
                     val repository = PeruvianServiceRepository.getInstance(this@PaymentActivity)
                     repository.confirmarPago(reservaId, pago)
 
+                    // Programar cambio automático de estado a CONFIRMADO después de 1 minuto
+                    // (para permitir subir fotos al álbum del tour)
+                    programarCambioEstadoReserva(reservaId)
+
                     // Generar comprobante y abrir voucher
                     val comprobante = paymentController.generarComprobante(reservaId)
                     if (comprobante != null) {
@@ -214,6 +220,44 @@ class PaymentActivity : AppCompatActivity() {
                 btnPagar.isEnabled = true
             }
         }
+    }
+
+    /**
+     * Programa el cambio automático de estado de la reserva a CONFIRMADO después de 1 minuto.
+     * Esto permite que el usuario pueda subir fotos al álbum del tour.
+     * También marca el tour del día actual como completado.
+     * 
+     * Usa un Handler con el Looper principal para que persista aunque la Activity se destruya.
+     */
+    private fun programarCambioEstadoReserva(bookingId: String) {
+        android.util.Log.d("PaymentActivity", "Programando cambio automático de estado para reserva: $bookingId (en 1 minuto)")
+        
+        // Usar Handler con Looper principal para que persista aunque la Activity se destruya
+        val handler = Handler(Looper.getMainLooper())
+        
+        handler.postDelayed({
+            android.util.Log.d("PaymentActivity", "1 minuto transcurrido, cambiando estado de reserva $bookingId a CONFIRMADO...")
+            
+            // Ejecutar en un hilo de fondo para no bloquear el hilo principal
+            Thread {
+                try {
+                    // Cambiar el estado a CONFIRMADO usando el contexto de la aplicación
+                    val repository = PeruvianServiceRepository.getInstance(applicationContext)
+                    val exito = repository.cambiarEstadoReservaAConfirmado(bookingId)
+                    
+                    if (exito) {
+                        android.util.Log.d("PaymentActivity", "✓ Reserva $bookingId cambiada automáticamente a CONFIRMADO después de 1 minuto")
+                        android.util.Log.d("PaymentActivity", "✓ Tour del día actual marcado como COMPLETADO - usuarios pueden subir fotos")
+                    } else {
+                        android.util.Log.w("PaymentActivity", "✗ No se pudo cambiar el estado de la reserva $bookingId (puede que ya esté confirmada)")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("PaymentActivity", "✗ Error al cambiar estado de reserva: ${e.message}", e)
+                }
+            }.start()
+        }, 60000) // 1 minuto = 60000 milisegundos
+        
+        android.util.Log.d("PaymentActivity", "Handler programado para ejecutarse en 1 minuto")
     }
 
     private fun abrirVoucher(comprobante: com.grupo4.appreservas.modelos.Recibo) {
