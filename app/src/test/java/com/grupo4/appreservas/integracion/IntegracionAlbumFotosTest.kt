@@ -2,6 +2,9 @@ package com.grupo4.appreservas.integracion
 
 import android.app.Application
 import android.content.Context
+import android.os.Looper
+import androidx.arch.core.executor.ArchTaskExecutor
+import androidx.arch.core.executor.TaskExecutor
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.grupo4.appreservas.modelos.Foto
@@ -11,7 +14,9 @@ import com.grupo4.appreservas.viewmodel.AlbumTourViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -48,6 +53,17 @@ class IntegracionAlbumFotosTest {
 
     @Before
     fun setUp() {
+        // Mock del Looper principal para evitar "Method getMainLooper not mocked"
+        mockkStatic(Looper::class)
+        every { Looper.getMainLooper() } returns mockk(relaxed = true)
+
+        // Forzar a ArchTaskExecutor a ejecutar todo en el mismo hilo (sin Looper)
+        ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
+            override fun executeOnDiskIO(runnable: Runnable) { runnable.run() }
+            override fun postToMainThread(runnable: Runnable) { runnable.run() }
+            override fun isMainThread(): Boolean = true
+        })
+
         Dispatchers.setMain(testDispatcher)
 
         context = mockk(relaxed = true)
@@ -59,22 +75,23 @@ class IntegracionAlbumFotosTest {
         every { anyConstructed<DatabaseHelper>().obtenerFotosPorTour(any()) } returns emptyList()
         every { anyConstructed<DatabaseHelper>().insertarFoto(any()) } returns 1L
 
-        // Instanciar repositorio DESPUÉS de configurar todos los mocks
         repository = PeruvianServiceRepository.getInstance(context)
     }
 
     @After
     fun tearDown() {
+        // Restaurar ejecutor y mocks
+        ArchTaskExecutor.getInstance().setDelegate(null)
+        unmockkStatic(Looper::class)
         Dispatchers.resetMain()
         clearAllMocks()
-        // Resetear la instancia singleton del repositorio para cada test
         val field = PeruvianServiceRepository::class.java.getDeclaredField("instance")
         field.isAccessible = true
         field.set(null, null)
     }
 
     @Test
-    fun `test HU-008 Escenario 1 - Subida de fotos al álbum grupal`() = runTest {
+    fun `test HU-008 Escenario 1 - Subida de fotos al álbum grupal`() = runTest(testDispatcher) {
         // Arrange: Fotos a subir
         val rutasImagenes = listOf(
             "file:///storage/emulated/0/DCIM/Camera/foto1.jpg",
@@ -103,7 +120,9 @@ class IntegracionAlbumFotosTest {
 
         // Act: Subir fotos
         viewModel.subirFotosSeleccionadas(tourId, rutasImagenes, nombreAutor)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se guardaron las fotos
         verify(atLeast = 2) { anyConstructed<DatabaseHelper>().insertarFoto(any()) }
@@ -119,7 +138,7 @@ class IntegracionAlbumFotosTest {
     }
 
     @Test
-    fun `test HU-008 Escenario 2 - Visualización de álbum con fotos aprobadas`() = runTest {
+    fun `test HU-008 Escenario 2 - Visualización de álbum con fotos aprobadas`() = runTest(testDispatcher) {
         // Arrange: Fotos existentes en el álbum
         val fotosExistentes = listOf(
             Foto(
@@ -161,7 +180,9 @@ class IntegracionAlbumFotosTest {
 
         // Act: Cargar fotos del álbum
         viewModel.cargarFotosAlbum(tourId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtuvieron solo las fotos aprobadas
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().obtenerFotosPorTour(tourId) }
@@ -177,7 +198,7 @@ class IntegracionAlbumFotosTest {
     }
 
     @Test
-    fun `test cargar fotos de álbum vacío muestra lista vacía`() = runTest {
+    fun `test cargar fotos de álbum vacío muestra lista vacía`() = runTest(testDispatcher) {
         // Arrange: Álbum sin fotos
         every { anyConstructed<DatabaseHelper>().obtenerFotosPorTour(tourId) } returns emptyList()
 
@@ -190,7 +211,9 @@ class IntegracionAlbumFotosTest {
 
         // Act: Cargar fotos del álbum
         viewModel.cargarFotosAlbum(tourId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtiene lista vacía
         val fotosObtenidas = repository.obtenerFotosPorTour(tourId)
@@ -201,7 +224,7 @@ class IntegracionAlbumFotosTest {
     }
 
     @Test
-    fun `test guardar múltiples fotos para un tour`() = runTest {
+    fun `test guardar múltiples fotos para un tour`() = runTest(testDispatcher) {
         // Arrange: Múltiples fotos a subir
         val rutasImagenes = (1..5).map { 
             "file:///storage/emulated/0/DCIM/Camera/foto$it.jpg" 
@@ -223,7 +246,9 @@ class IntegracionAlbumFotosTest {
 
         // Act: Subir múltiples fotos
         viewModel.subirFotosSeleccionadas(tourId, rutasImagenes, nombreAutor)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        // Esperar que postValue se propague (withContext(Dispatchers.IO) ejecuta en hilo real)
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se guardaron todas las fotos
         assertEquals(5, fotosGuardadas.size)
@@ -236,7 +261,7 @@ class IntegracionAlbumFotosTest {
     }
 
     @Test
-    fun `test fotos de diferentes tours no se mezclan`() = runTest {
+    fun `test fotos de diferentes tours no se mezclan`() = runTest(testDispatcher) {
         // Arrange: Fotos de diferentes tours
         val tourId1 = "dest_001_2024-11-20"
         val tourId2 = "dest_002_2024-11-21"

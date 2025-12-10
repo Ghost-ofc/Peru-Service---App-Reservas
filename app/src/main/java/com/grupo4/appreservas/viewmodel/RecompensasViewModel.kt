@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.grupo4.appreservas.modelos.Logro
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +28,9 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _toursCompletados = MutableLiveData<Int>()
     val toursCompletados: LiveData<Int> = _toursCompletados
+
+    private val _reservas = MutableLiveData<List<Reserva>>()
+    val reservas: LiveData<List<Reserva>> = _reservas
 
     private val _mensajeEstado = MutableLiveData<String>()
     val mensajeEstado: LiveData<String> = _mensajeEstado
@@ -105,10 +109,12 @@ class RecompensasViewModel(application: Application) : AndroidViewModel(applicat
                     val puntos = repository.obtenerPuntosUsuario(usuarioId)
                     val logros = repository.obtenerLogrosUsuario(usuarioId)
                     val reservasCompletadas = repository.obtenerReservasCompletadas(usuarioId)
+                    val todasLasReservas = repository.obtenerReservasPorUsuario(usuarioId)
                     
                     _puntos.postValue(puntos)
                     _logros.postValue(logros)
                     _toursCompletados.postValue(reservasCompletadas.size)
+                    _reservas.postValue(todasLasReservas)
                     _mensajeEstado.postValue("Datos cargados correctamente")
                 } catch (e: Exception) {
                     _error.postValue("Error al cargar resumen: ${e.message}")

@@ -13,7 +13,6 @@ import com.grupo4.appreservas.modelos.PuntosUsuario
 import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.modelos.Rol
 import com.grupo4.appreservas.modelos.TipoLogro
-import com.grupo4.appreservas.modelos.TipoNotificacion
 import com.grupo4.appreservas.modelos.Tour
 import com.grupo4.appreservas.modelos.TourSlot
 import com.grupo4.appreservas.modelos.Usuario
@@ -243,24 +242,106 @@ class PeruvianServiceRepository private constructor(private val dbHelper: Databa
     /**
      * Confirma el pago de una reserva.
      * Equivalente a confirmarPago(bookingId, payment): Booking del diagrama UML (BookingService).
+     * Nota: La reserva se mantiene en PENDIENTE después del pago y cambiará automáticamente
+     * a CONFIRMADO después de 1 minuto para permitir subir fotos al álbum.
      */
     fun confirmarPago(bookingId: String, pago: Pago): Reserva? {
         val reserva = buscarReservaPorId(bookingId) ?: return null
 
-        // Actualizar el estado de la reserva a confirmado
-        val reservaConfirmada = reserva.copy(
-            estado = com.grupo4.appreservas.modelos.EstadoReserva.CONFIRMADO,
+        // Actualizar el método de pago pero mantener el estado en PENDIENTE
+        // El estado cambiará automáticamente a CONFIRMADO después de 1 minuto
+        val reservaActualizada = reserva.copy(
+            estado = com.grupo4.appreservas.modelos.EstadoReserva.PENDIENTE,
             metodoPago = pago.metodoPago.name
         )
 
-        dbHelper.insertarReserva(reservaConfirmada)
+        dbHelper.insertarReserva(reservaActualizada)
         
-        // Sumar puntos cuando se confirma el pago (reserva completada según HU-007)
-        if (reserva.estado != com.grupo4.appreservas.modelos.EstadoReserva.CONFIRMADO) {
-            sumarPuntosPorReserva(reserva.usuarioId, bookingId)
+        return reservaActualizada
+    }
+
+    /**
+     * Cambia el estado de una reserva a confirmado.
+     * Usado para cambiar automáticamente el estado después de 1 minuto del pago.
+     * Esto permite que el usuario pueda subir fotos al álbum del tour.
+     * También marca el tour del día actual como completado.
+     */
+    fun cambiarEstadoReservaAConfirmado(bookingId: String): Boolean {
+        android.util.Log.d("PeruvianServiceRepository", "Iniciando cambio de estado de reserva: $bookingId")
+        
+        val reserva = buscarReservaPorId(bookingId) ?: run {
+            android.util.Log.e("PeruvianServiceRepository", "Reserva $bookingId no encontrada")
+            return false
         }
         
-        return reservaConfirmada
+        android.util.Log.d("PeruvianServiceRepository", "Reserva encontrada: $bookingId, estado actual: ${reserva.estado.valor}, tourId: ${reserva.tourId}")
+        
+        // Solo cambiar si está pendiente
+        if (reserva.estado == com.grupo4.appreservas.modelos.EstadoReserva.PENDIENTE) {
+            val nuevoEstado = com.grupo4.appreservas.modelos.EstadoReserva.CONFIRMADO
+            val reservaConfirmada = reserva.copy(
+                estado = nuevoEstado,
+                estadoStr = nuevoEstado.valor // Asegurar que estadoStr también se actualice
+            )
+            
+            android.util.Log.d("PeruvianServiceRepository", "Actualizando reserva: estado=${nuevoEstado.valor}, estadoStr=${reservaConfirmada.estadoStr}")
+            val resultado = dbHelper.insertarReserva(reservaConfirmada)
+            android.util.Log.d("PeruvianServiceRepository", "Resultado de insertarReserva: $resultado")
+            
+            // Verificar que se actualizó correctamente
+            val reservaVerificada = buscarReservaPorId(bookingId)
+            android.util.Log.d("PeruvianServiceRepository", "Verificación: Reserva después de actualizar - estado: ${reservaVerificada?.estado?.valor}, estadoStr: ${reservaVerificada?.estadoStr}")
+            
+            android.util.Log.d("PeruvianServiceRepository", "✓ Reserva $bookingId cambiada a CONFIRMADO")
+            
+            // Sumar puntos cuando se confirma la reserva (reserva completada según HU-007)
+            sumarPuntosPorReserva(reserva.usuarioId, bookingId)
+            android.util.Log.d("PeruvianServiceRepository", "✓ Puntos sumados para usuario ${reserva.usuarioId}")
+            
+            // Marcar el tour del día actual como completado
+            marcarTourComoCompletado(reserva.tourId, reserva.fecha)
+            
+            return true
+        } else {
+            android.util.Log.w("PeruvianServiceRepository", "Reserva $bookingId ya está en estado: ${reserva.estado.valor}, no se cambia")
+        }
+        
+        return false
+    }
+
+    /**
+     * Marca el tour del día actual como completado.
+     * Esto permite que los usuarios puedan subir fotos al álbum del tour.
+     */
+    private fun marcarTourComoCompletado(tourId: String, fechaReserva: Date) {
+        try {
+            // Obtener el tour
+            val tour = obtenerTourPorId(tourId)
+            
+            if (tour != null) {
+                // Verificar si el tour es del día actual
+                val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val fechaReservaStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(fechaReserva)
+                
+                android.util.Log.d("PeruvianServiceRepository", "Verificando tour: $tourId, fecha tour: ${tour.fecha}, fecha reserva: $fechaReservaStr, fecha hoy: $fechaHoy")
+                
+                // Si el tour es del día actual o de la fecha de la reserva, marcarlo como completado
+                if (tour.fecha == fechaHoy || tour.fecha == fechaReservaStr) {
+                    val exito = dbHelper.actualizarEstadoTour(tourId, "Completado")
+                    if (exito) {
+                        android.util.Log.d("PeruvianServiceRepository", "✓ Tour $tourId marcado como COMPLETADO (fecha: ${tour.fecha})")
+                    } else {
+                        android.util.Log.e("PeruvianServiceRepository", "✗ Error al marcar tour $tourId como completado")
+                    }
+                } else {
+                    android.util.Log.d("PeruvianServiceRepository", "Tour $tourId no es del día actual (fecha: ${tour.fecha}), no se marca como completado")
+                }
+            } else {
+                android.util.Log.w("PeruvianServiceRepository", "Tour $tourId no encontrado, no se puede marcar como completado")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PeruvianServiceRepository", "Error al marcar tour como completado: ${e.message}", e)
+        }
     }
 
     /**

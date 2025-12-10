@@ -20,8 +20,9 @@ class VoucherService(
     fun emitir(bookingId: String): Recibo? {
         val reserva = repository.buscarReservaPorId(bookingId) ?: return null
 
-        // Generar código QR
-        val qrCode = qrService.generate(reserva.codigoQR)
+        // Usar el código QR de la reserva directamente (o el código de confirmación si no hay QR)
+        // El QR se generará como imagen en VoucherActivity
+        val qrCode = reserva.codigoQR.ifEmpty { reserva.codigoConfirmacion }
 
         // Obtener método de pago del pago asociado
         val pago = repository.buscarPagoPorBooking(bookingId)

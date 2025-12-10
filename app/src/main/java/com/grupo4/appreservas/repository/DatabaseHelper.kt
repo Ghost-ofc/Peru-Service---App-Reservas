@@ -739,8 +739,11 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
                 put(COL_RESERVA_TOUR_SLOT_ID, reserva.tourSlotId)
             }
         }
+        Log.d("DatabaseHelper", "Insertando/actualizando reserva: id=${reserva.id}, estado=${reserva.estado.valor}, estadoStr='${reserva.estadoStr}'")
         // Usar CONFLICT_REPLACE para actualizar si la reserva ya existe
-        return db.insertWithOnConflict(TABLA_RESERVAS, null, valores, SQLiteDatabase.CONFLICT_REPLACE)
+        val resultado = db.insertWithOnConflict(TABLA_RESERVAS, null, valores, SQLiteDatabase.CONFLICT_REPLACE)
+        Log.d("DatabaseHelper", "Resultado de insertarReserva: $resultado (reservaId=${reserva.id})")
+        return resultado
     }
 
     fun obtenerReservaPorQR(codigoQR: String): Reserva? {
@@ -1051,6 +1054,24 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
         }
         return db.insertWithOnConflict(TABLA_TOURS, null, valores, SQLiteDatabase.CONFLICT_REPLACE)
     }
+
+    /**
+     * Actualiza el estado de un tour.
+     */
+    fun actualizarEstadoTour(tourId: String, nuevoEstado: String): Boolean {
+        val db = writableDatabase
+        val valores = ContentValues().apply {
+            put(COL_TOUR_ESTADO, nuevoEstado)
+        }
+        val resultado = db.update(
+            TABLA_TOURS,
+            valores,
+            "$COL_TOUR_ID = ?",
+            arrayOf(tourId)
+        )
+        Log.d("DatabaseHelper", "Tour $tourId actualizado a estado: $nuevoEstado (filas afectadas: $resultado)")
+        return resultado > 0
+    }
     
     fun asociarTourAGuia(tourId: String, guiaId: Int): Boolean {
         val db = writableDatabase
@@ -1237,6 +1258,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
 
     private fun cursorToReserva(cursor: Cursor): Reserva {
         val estadoStr = cursor.getString(cursor.getColumnIndexOrThrow(COL_RESERVA_ESTADO))
+        val reservaId = cursor.getString(cursor.getColumnIndexOrThrow(COL_RESERVA_ID))
+        Log.d("DatabaseHelper", "Leyendo reserva desde BD: id=$reservaId, estadoStr='$estadoStr'")
         val tourSlotIdIndex = cursor.getColumnIndex(COL_RESERVA_TOUR_SLOT_ID)
         val tourSlotId = if (tourSlotIdIndex >= 0 && !cursor.isNull(tourSlotIdIndex)) {
             cursor.getString(tourSlotIdIndex)
@@ -1337,7 +1360,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, NOMBRE_BD, nu
             codigoQR = cursor.getString(cursor.getColumnIndexOrThrow(COL_RESERVA_QR)),
             codigoConfirmacion = cursor.getString(cursor.getColumnIndexOrThrow(COL_RESERVA_QR)),
             estado = EstadoReserva.fromString(estadoStr),
-            estadoStr = estadoStr,
+            estadoStr = estadoStr, // Usar el valor de la BD directamente
             horaRegistro = cursor.getString(cursor.getColumnIndexOrThrow(COL_RESERVA_HORA)),
             fecha = fecha,
             horaInicio = horaInicio,

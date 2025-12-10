@@ -11,9 +11,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.grupo4.appreservas.R
+import com.grupo4.appreservas.adapter.HistorialViajesAdapter
 import com.grupo4.appreservas.adapter.LogrosAdapter
 import com.grupo4.appreservas.modelos.Logro
 import com.grupo4.appreservas.modelos.PuntosUsuario
+import com.grupo4.appreservas.modelos.Reserva
 import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import com.grupo4.appreservas.viewmodel.RecompensasViewModel
 
@@ -34,9 +36,11 @@ class RecompensasActivity : AppCompatActivity() {
     private lateinit var viewProgressBar: View
     private lateinit var frameProgressBar: View
     private lateinit var recyclerLogros: RecyclerView
+    private lateinit var recyclerHistorialViajes: RecyclerView
     private lateinit var btnCerrar: ImageView
     private lateinit var tvVolverInicio: TextView
     private lateinit var logrosAdapter: LogrosAdapter
+    private lateinit var historialViajesAdapter: HistorialViajesAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +63,13 @@ class RecompensasActivity : AppCompatActivity() {
         cargarDatos()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Recargar datos cuando la Activity vuelve a estar visible
+        // Esto asegura que se muestren los estados actualizados de las reservas
+        cargarDatos()
+    }
+
     private fun inicializarVistas() {
         tvPuntos = findViewById(R.id.tvPuntos)
         tvNivelUsuario = findViewById(R.id.tvNivelUsuario)
@@ -68,6 +79,7 @@ class RecompensasActivity : AppCompatActivity() {
         viewProgressBar = findViewById(R.id.viewProgressBar)
         frameProgressBar = findViewById(R.id.frameProgressBar)
         recyclerLogros = findViewById(R.id.recyclerLogros)
+        recyclerHistorialViajes = findViewById(R.id.recyclerHistorialViajes)
         btnCerrar = findViewById(R.id.btnCerrar)
         tvVolverInicio = findViewById(R.id.tvVolverInicio)
         
@@ -81,10 +93,33 @@ class RecompensasActivity : AppCompatActivity() {
 
     private fun configurarRecyclerView() {
         logrosAdapter = LogrosAdapter()
+        historialViajesAdapter = HistorialViajesAdapter { reserva ->
+            // Si la reserva está confirmada, abrir el álbum de fotos
+            // Si está pendiente o cancelada, abrir el detalle del destino (para reservar nuevamente si se desea)
+            if (reserva.estado == com.grupo4.appreservas.modelos.EstadoReserva.CONFIRMADO) {
+                // Abrir álbum de fotos del tour
+                abrirAlbum(reserva.tourId)
+            } else {
+                // Abrir detalle del destino (para reservar o ver información)
+                reserva.destino?.let { destino ->
+                    val intent = Intent(this, DetalleDestinoActivity::class.java)
+                    intent.putExtra("DESTINO_ID", destino.id)
+                    intent.putExtra("USUARIO_ID", usuarioId)
+                    startActivity(intent)
+                } ?: run {
+                    Toast.makeText(this, "No se encontró información del destino", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
         recyclerLogros.apply {
             layoutManager = LinearLayoutManager(this@RecompensasActivity)
             adapter = logrosAdapter
+        }
+
+        recyclerHistorialViajes.apply {
+            layoutManager = LinearLayoutManager(this@RecompensasActivity)
+            adapter = historialViajesAdapter
         }
     }
 
@@ -113,6 +148,10 @@ class RecompensasActivity : AppCompatActivity() {
 
         viewModel.toursCompletados.observe(this) { cantidad ->
             tvToursCompletados.text = cantidad.toString()
+        }
+
+        viewModel.reservas.observe(this) { reservas ->
+            mostrarReservas(reservas)
         }
 
         viewModel.mensajeEstado.observe(this) { mensaje ->
@@ -144,8 +183,8 @@ class RecompensasActivity : AppCompatActivity() {
      */
     private fun abrirAlbum(idTour: String) {
         val repository = PeruvianServiceRepository.getInstance(this)
-        val reserva = repository.buscarReservaPorId(idTour)
-        val tour = reserva?.let { repository.obtenerTourPorId(it.tourId) }
+        // Buscar el tour directamente por su ID
+        val tour = repository.obtenerTourPorId(idTour)
         
         if (tour != null) {
             val intent = Intent(this, AlbumTourActivity::class.java)
@@ -154,7 +193,7 @@ class RecompensasActivity : AppCompatActivity() {
             intent.putExtra("USUARIO_ID", usuarioId)
             startActivity(intent)
         } else {
-            Toast.makeText(this, "No se pudo abrir el álbum del tour", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Tour no encontrado", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -191,6 +230,14 @@ class RecompensasActivity : AppCompatActivity() {
         // Actualizar contador de logros desbloqueados
         val logrosDesbloqueados = logros.count { it.desbloqueado }
         tvLogrosDesbloqueados.text = logrosDesbloqueados.toString()
+    }
+
+    /**
+     * Muestra las reservas del usuario en el historial.
+     * Equivalente a mostrarReservas(reservas) del diagrama UML.
+     */
+    private fun mostrarReservas(reservas: List<Reserva>) {
+        historialViajesAdapter.actualizarLista(reservas)
     }
 
     /**
