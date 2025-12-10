@@ -6,9 +6,13 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
@@ -38,6 +42,7 @@ class CatalogoActivity : AppCompatActivity() {
     private lateinit var btnFiltros: ImageView
     
     // Header views
+    private lateinit var topBar: LinearLayout
     private lateinit var ivNotificaciones: ImageView
     private lateinit var tvBadgeNotificaciones: TextView
     private lateinit var ivPerfil: ImageView
@@ -62,6 +67,7 @@ class CatalogoActivity : AppCompatActivity() {
 
         inicializarDependencias()
         inicializarVistas()
+        configurarSafeArea()
         configurarRecyclerView()
         configurarBuscador()
         configurarHeader()
@@ -82,6 +88,7 @@ class CatalogoActivity : AppCompatActivity() {
         btnFiltros = findViewById(R.id.btnFiltros)
         
         // Header views
+        topBar = findViewById(R.id.topBar)
         ivNotificaciones = findViewById(R.id.iv_notificaciones)
         tvBadgeNotificaciones = findViewById(R.id.tv_badge_notificaciones)
         ivPerfil = findViewById(R.id.iv_perfil)
@@ -90,6 +97,31 @@ class CatalogoActivity : AppCompatActivity() {
         btnFiltros.setOnClickListener {
             // Los filtros avanzados se pueden implementar más adelante
             Toast.makeText(this, "Filtros (próximamente)", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    /**
+     * Configura el padding del header para respetar el notch y la barra de estado.
+     * Esto asegura que los iconos de notificaciones, perfil y logout sean accesibles.
+     */
+    private fun configurarSafeArea() {
+        ViewCompat.setOnApplyWindowInsetsListener(topBar) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val statusBarHeight = systemBars.top
+            
+            // Aplicar padding superior dinámico basado en la altura de la barra de estado
+            // Mantener el padding lateral e inferior original (16dp)
+            val paddingDp = 16
+            val paddingPx = (paddingDp * resources.displayMetrics.density).toInt()
+            
+            view.updatePadding(
+                top = statusBarHeight + paddingPx,
+                bottom = paddingPx,
+                left = paddingPx,
+                right = paddingPx
+            )
+            
+            insets
         }
     }
     
