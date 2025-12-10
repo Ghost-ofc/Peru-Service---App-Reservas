@@ -3,9 +3,13 @@ package com.grupo4.appreservas.ui
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -22,6 +26,7 @@ class NotificacionesActivity : AppCompatActivity() {
 
     private var usuarioId: Int = 0
     private lateinit var viewModel: NotificacionesViewModel
+    private lateinit var appBarLayout: LinearLayout
     private lateinit var recyclerNotificaciones: RecyclerView
     private lateinit var tvContador: TextView
     private lateinit var btnCerrar: ImageView
@@ -43,6 +48,7 @@ class NotificacionesActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this).get(NotificacionesViewModel::class.java)
 
         inicializarVistas()
+        configurarSafeArea()
         configurarRecyclerView()
         configurarListeners()
         observarViewModel()
@@ -50,10 +56,36 @@ class NotificacionesActivity : AppCompatActivity() {
     }
 
     private fun inicializarVistas() {
+        appBarLayout = findViewById(R.id.appBarLayout)
         recyclerNotificaciones = findViewById(R.id.recyclerNotificaciones)
         tvContador = findViewById(R.id.tvContador)
         btnCerrar = findViewById(R.id.btnCerrar)
         tvMarcarTodas = findViewById(R.id.tvMarcarTodas)
+    }
+    
+    /**
+     * Configura el padding del header para respetar el notch y la barra de estado.
+     * Esto asegura que el botón cerrar sea accesible.
+     */
+    private fun configurarSafeArea() {
+        ViewCompat.setOnApplyWindowInsetsListener(appBarLayout) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val statusBarHeight = systemBars.top
+            
+            // Aplicar padding superior dinámico basado en la altura de la barra de estado
+            // Mantener el padding lateral e inferior original (16dp)
+            val paddingDp = 16
+            val paddingPx = (paddingDp * resources.displayMetrics.density).toInt()
+            
+            view.updatePadding(
+                top = statusBarHeight + paddingPx,
+                bottom = paddingPx,
+                left = paddingPx,
+                right = paddingPx
+            )
+            
+            insets
+        }
     }
 
     private fun configurarRecyclerView() {
