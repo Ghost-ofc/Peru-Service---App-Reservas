@@ -2,6 +2,9 @@ package com.grupo4.appreservas.integracion
 
 import android.app.Application
 import android.content.Context
+import android.os.Looper
+import androidx.arch.core.executor.ArchTaskExecutor
+import androidx.arch.core.executor.TaskExecutor
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.grupo4.appreservas.modelos.*
@@ -51,6 +54,18 @@ class IntegracionNotificacionesTest {
 
     @Before
     fun setUp() {
+        // Mock del Looper principal para evitar "Method getMainLooper not mocked"
+        // IMPORTANTE: Debe hacerse ANTES de usar testDispatcher
+        mockkStatic(Looper::class)
+        every { Looper.getMainLooper() } returns mockk(relaxed = true)
+
+        // Forzar a ArchTaskExecutor a ejecutar todo en el mismo hilo (sin Looper)
+        ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
+            override fun executeOnDiskIO(runnable: Runnable) { runnable.run() }
+            override fun postToMainThread(runnable: Runnable) { runnable.run() }
+            override fun isMainThread(): Boolean = true
+        })
+
         Dispatchers.setMain(testDispatcher)
 
         context = mockk(relaxed = true)
@@ -72,6 +87,9 @@ class IntegracionNotificacionesTest {
 
     @After
     fun tearDown() {
+        // Restaurar ejecutor y mocks
+        ArchTaskExecutor.getInstance().setDelegate(null)
+        unmockkStatic(Looper::class)
         Dispatchers.resetMain()
         clearAllMocks()
         // Resetear la instancia singleton del repositorio para cada test

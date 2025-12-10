@@ -331,12 +331,14 @@ class IntegracionAlbumFotosTest {
 
         // Act: Cargar fotos de cada tour
         viewModel.cargarFotosAlbum(tourId1)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
         
         val fotosTour1Obtenidas = repository.obtenerFotosPorTour(tourId1)
         
         viewModel.cargarFotosAlbum(tourId2)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
         
         val fotosTour2Obtenidas = repository.obtenerFotosPorTour(tourId2)
 
