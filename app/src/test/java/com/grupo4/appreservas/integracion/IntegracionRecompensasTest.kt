@@ -2,6 +2,9 @@ package com.grupo4.appreservas.integracion
 
 import android.app.Application
 import android.content.Context
+import android.os.Looper
+import androidx.arch.core.executor.ArchTaskExecutor
+import androidx.arch.core.executor.TaskExecutor
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.grupo4.appreservas.modelos.*
@@ -11,7 +14,9 @@ import com.grupo4.appreservas.viewmodel.RecompensasViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -47,6 +52,17 @@ class IntegracionRecompensasTest {
 
     @Before
     fun setUp() {
+        // Mock del Looper principal para evitar "Method getMainLooper not mocked"
+        mockkStatic(Looper::class)
+        every { Looper.getMainLooper() } returns mockk(relaxed = true)
+
+        // Forzar a ArchTaskExecutor a ejecutar todo en el mismo hilo (sin Looper)
+        ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
+            override fun executeOnDiskIO(runnable: Runnable) { runnable.run() }
+            override fun postToMainThread(runnable: Runnable) { runnable.run() }
+            override fun isMainThread(): Boolean = true
+        })
+
         Dispatchers.setMain(testDispatcher)
 
         context = mockk(relaxed = true)
@@ -71,6 +87,9 @@ class IntegracionRecompensasTest {
 
     @After
     fun tearDown() {
+        // Restaurar ejecutor y mocks
+        ArchTaskExecutor.getInstance().setDelegate(null)
+        unmockkStatic(Looper::class)
         Dispatchers.resetMain()
         clearAllMocks()
         // Resetear la instancia singleton del repositorio para cada test
@@ -80,7 +99,7 @@ class IntegracionRecompensasTest {
     }
 
     @Test
-    fun `test HU-007 Escenario 1 - Puntos se suman automáticamente al completar reserva`() = runTest {
+    fun `test HU-007 Escenario 1 - Puntos se suman automáticamente al completar reserva`() = runTest(testDispatcher) {
         // Arrange: Crear una reserva confirmada
         val reserva = Reserva(
             id = reservaId,
@@ -109,9 +128,21 @@ class IntegracionRecompensasTest {
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
         // Mock para verificarYDesbloquearLogros
-        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } returns emptyList()
-        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
-        every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } returns 1L
+        var logrosCreados = mutableListOf<Logro>()
+        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers { logrosCreados.toList() }
+        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } answers {
+            val logroId = secondArg<String>()
+            logrosCreados.any { it.id == logroId }
+        }
+        every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } answers {
+            val logro = secondArg<Logro>()
+            val existente = logrosCreados.find { it.id == logro.id }
+            if (existente != null) {
+                logrosCreados.remove(existente)
+            }
+            logrosCreados.add(logro)
+            1L
+        }
 
         // Instanciar ViewModel DESPUÉS de configurar los mocks específicos
         viewModel = RecompensasViewModel(application)
@@ -122,9 +153,11 @@ class IntegracionRecompensasTest {
 
         // Act: Sumar puntos por reserva
         repository.sumarPuntosPorReserva(usuarioId, reservaId)
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se sumaron los puntos
-        // inicializarPuntos se llama desde obtenerPuntos (que se llama en verificarYDesbloquearLogros)
+        // inicializarPuntos se llama desde obtenerPuntosUsuario (que se llama múltiples veces en el flujo)
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, PuntosUsuario.PUNTOS_POR_RESERVA) }
         
@@ -134,7 +167,7 @@ class IntegracionRecompensasTest {
     }
 
     @Test
-    fun `test HU-007 Escenario 2 - Logro Primer Viaje se desbloquea al completar primera reserva`() = runTest {
+    fun `test HU-007 Escenario 2 - Logro Primer Viaje se desbloquea al completar primera reserva`() = runTest(testDispatcher) {
         // Arrange: Usuario con una reserva confirmada
         val reserva = Reserva(
             id = reservaId,
@@ -163,21 +196,22 @@ class IntegracionRecompensasTest {
         every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(reservaId) } returns reserva
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns listOf(reserva)
 
-        // Mock: Logro Primer Viaje
-        var logroPrimerViaje: Logro? = null
-        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers {
-            if (logroPrimerViaje != null) {
-                listOf(logroPrimerViaje!!)
-            } else {
-                emptyList()
-            }
+        // Mock: Logro Primer Viaje - inicializarLogrosBase se llama primero y crea 5 logros base
+        var logrosCreados = mutableListOf<Logro>()
+        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers { 
+            logrosCreados.toList() 
         }
-        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
+        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } answers {
+            val logroId = secondArg<String>()
+            logrosCreados.any { it.id == logroId }
+        }
         every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } answers {
             val logro = secondArg<Logro>()
-            if (logro.tipo == TipoLogro.PRIMER_VIAJE) {
-                logroPrimerViaje = logro
+            val existente = logrosCreados.find { it.id == logro.id }
+            if (existente != null) {
+                logrosCreados.remove(existente)
             }
+            logrosCreados.add(logro)
             1L
         }
 
@@ -190,19 +224,20 @@ class IntegracionRecompensasTest {
 
         // Act: Actualizar puntos (esto debería desbloquear el logro)
         viewModel.actualizarPuntos(usuarioId, reservaId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
-        // Assert: Verificar que se creó el logro
+        // Assert: Verificar que se creó/actualizó el logro
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) }
         
-        // Verificar que el logro se desbloqueó
-        assertNotNull("El logro debe existir", logroPrimerViaje)
-        assertEquals("Debe ser logro de primer viaje", TipoLogro.PRIMER_VIAJE, logroPrimerViaje?.tipo)
+        // Verificar que el logro Primer Viaje existe y está desbloqueado
+        val logroPrimerViaje = logrosCreados.find { it.tipo == TipoLogro.PRIMER_VIAJE }
+        assertNotNull("El logro Primer Viaje debe existir", logroPrimerViaje)
         assertTrue("El logro debe estar desbloqueado", logroPrimerViaje?.desbloqueado == true)
     }
 
     @Test
-    fun `test puntos acumulados se muestran correctamente en el perfil`() = runTest {
+    fun `test puntos acumulados se muestran correctamente en el perfil`() = runTest(testDispatcher) {
         // Arrange: Usuario con puntos acumulados
         val puntosAcumulados = 600
         every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } returns puntosAcumulados
@@ -221,7 +256,8 @@ class IntegracionRecompensasTest {
 
         // Act: Cargar puntos
         viewModel.cargarPuntos(usuarioId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtienen los puntos correctamente
         val puntos = repository.obtenerPuntos(usuarioId)
@@ -236,7 +272,7 @@ class IntegracionRecompensasTest {
     }
 
     @Test
-    fun `test logro de 5 tours se desbloquea al completar 5 reservas`() = runTest {
+    fun `test logro de 5 tours se desbloquea al completar 5 reservas`() = runTest(testDispatcher) {
         // Arrange: Usuario con 5 reservas confirmadas
         val reservas = (1..5).map { i ->
             Reserva(
@@ -258,24 +294,30 @@ class IntegracionRecompensasTest {
 
         // Mock: 5 reservas confirmadas
         every { anyConstructed<DatabaseHelper>().obtenerReservasPorUsuario(usuarioId) } returns reservas
+        every { anyConstructed<DatabaseHelper>().obtenerReservaPorId(any()) } answers { 
+            val id = firstArg<String>()
+            reservas.find { it.reservaId == id }
+        }
         every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } returns 1000
         every { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) } just Runs
+        every { anyConstructed<DatabaseHelper>().sumarPuntos(any(), any()) } returns true
 
-        // Mock: Logros
-        var logro5Tours: Logro? = null
-        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers {
-            if (logro5Tours != null) {
-                listOf(logro5Tours!!)
-            } else {
-                emptyList()
-            }
+        // Mock: Logros - inicializarLogrosBase se llama primero
+        var logrosCreados = mutableListOf<Logro>()
+        every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers { 
+            logrosCreados.toList() 
         }
-        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
+        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } answers {
+            val logroId = secondArg<String>()
+            logrosCreados.any { it.id == logroId }
+        }
         every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } answers {
             val logro = secondArg<Logro>()
-            if (logro.tipo == TipoLogro.VIAJERO_FRECUENTE) {
-                logro5Tours = logro
+            val existente = logrosCreados.find { it.id == logro.id }
+            if (existente != null) {
+                logrosCreados.remove(existente)
             }
+            logrosCreados.add(logro)
             1L
         }
 
@@ -288,10 +330,16 @@ class IntegracionRecompensasTest {
 
         // Act: Actualizar puntos (esto debería desbloquear el logro)
         viewModel.actualizarPuntos(usuarioId, reservas.first().reservaId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se desbloqueó el logro de 5 tours
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) }
+        
+        // Verificar que el logro Viajero Frecuente existe y está desbloqueado
+        val logro5Tours = logrosCreados.find { it.tipo == TipoLogro.VIAJERO_FRECUENTE }
+        assertNotNull("El logro Viajero Frecuente debe existir", logro5Tours)
+        assertTrue("El logro debe estar desbloqueado", logro5Tours?.desbloqueado == true)
     }
 
     @Test
@@ -350,7 +398,7 @@ class IntegracionRecompensasTest {
     }
 
     @Test
-    fun `test flujo completo desde reserva hasta desbloqueo de logro`() = runTest {
+    fun `test flujo completo desde reserva hasta desbloqueo de logro`() = runTest(testDispatcher) {
         // Arrange: Usuario nuevo sin puntos ni logros
         val reserva = Reserva(
             id = reservaId,
@@ -400,11 +448,14 @@ class IntegracionRecompensasTest {
 
         // Act: Actualizar puntos (simula confirmación de pago)
         viewModel.actualizarPuntos(usuarioId, reservaId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se sumaron los puntos
         // Nota: El mock retorna puntosSimulados que se actualiza cuando se llama a sumarPuntos
-        verify(exactly = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
+        // inicializarPuntos se llama múltiples veces: desde verificarYDesbloquearLogros en el repositorio,
+        // desde verificarYDesbloquearLogros en el ViewModel, y desde obtenerPuntosUsuario al recargar puntos
+        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) }
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().sumarPuntos(usuarioId, PuntosUsuario.PUNTOS_POR_RESERVA) }
         
         // Verificar puntos después de la suma
@@ -420,7 +471,7 @@ class IntegracionRecompensasTest {
     }
 
     @Test
-    fun `test logros se generan automáticamente al cargar perfil por primera vez`() = runTest {
+    fun `test logros se generan automáticamente al cargar perfil por primera vez`() = runTest(testDispatcher) {
         // Arrange: Usuario sin logros
         every { anyConstructed<DatabaseHelper>().obtenerPuntos(usuarioId) } returns 0
         every { anyConstructed<DatabaseHelper>().inicializarPuntos(usuarioId) } just Runs
@@ -430,9 +481,16 @@ class IntegracionRecompensasTest {
         every { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) } answers { 
             logrosCreados.toList() 
         }
-        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } returns false
+        every { anyConstructed<DatabaseHelper>().existeLogro(usuarioId, any()) } answers {
+            val logroId = secondArg<String>()
+            logrosCreados.any { it.id == logroId }
+        }
         every { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) } answers {
             val logro = secondArg<Logro>()
+            val existente = logrosCreados.find { it.id == logro.id }
+            if (existente != null) {
+                logrosCreados.remove(existente)
+            }
             logrosCreados.add(logro)
             1L
         }
@@ -446,16 +504,20 @@ class IntegracionRecompensasTest {
 
         // Act: Cargar logros (primera vez)
         viewModel.cargarLogros(usuarioId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtuvieron los logros
         verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerLogros(usuarioId) }
-        // Verificar que se crearon los logros base (inicializarLogrosBase crea 5 logros)
-        verify(atLeast = 5) { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) }
+        // Verificar que se crearon los logros base (inicializarLogrosBase crea 5 logros: PRIMER_VIAJE, VIAJERO_FRECUENTE, TOURS_10, PUNTOS_500, PUNTOS_1000)
+        verify(exactly = 5) { anyConstructed<DatabaseHelper>().insertarLogroParaUsuario(usuarioId, any()) }
+        
+        // Verificar que se crearon los 5 logros base
+        assertEquals(5, logrosCreados.size)
     }
 
     @Test
-    fun `test obtener logros devuelve lista de logros del usuario`() = runTest {
+    fun `test obtener logros devuelve lista de logros del usuario`() = runTest(testDispatcher) {
         // Arrange: Logros existentes
         val logros = listOf(
             Logro(
@@ -492,7 +554,8 @@ class IntegracionRecompensasTest {
 
         // Act: Cargar logros
         viewModel.cargarLogros(usuarioId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtuvieron los logros
         val logrosObtenidos = repository.obtenerLogros(usuarioId)
