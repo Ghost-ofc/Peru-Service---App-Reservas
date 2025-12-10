@@ -3,11 +3,13 @@ package com.grupo4.appreservas.integracion
 import android.app.Application
 import android.content.Context
 import android.os.Looper
+import android.util.Log
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.TaskExecutor
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import com.grupo4.appreservas.modelos.Foto
+import com.grupo4.appreservas.modelos.Tour
 import com.grupo4.appreservas.repository.DatabaseHelper
 import com.grupo4.appreservas.repository.PeruvianServiceRepository
 import com.grupo4.appreservas.viewmodel.AlbumTourViewModel
@@ -56,6 +58,13 @@ class IntegracionAlbumFotosTest {
         // Mock del Looper principal para evitar "Method getMainLooper not mocked"
         mockkStatic(Looper::class)
         every { Looper.getMainLooper() } returns mockk(relaxed = true)
+        
+        // Mock de Log para evitar errores
+        mockkStatic(Log::class)
+        every { Log.d(any<String>(), any<String>()) } returns 0
+        every { Log.w(any<String>(), any<String>()) } returns 0
+        every { Log.e(any<String>(), any<String>()) } returns 0
+        every { Log.e(any<String>(), any<String>(), any<Throwable>()) } returns 0
 
         // Forzar a ArchTaskExecutor a ejecutar todo en el mismo hilo (sin Looper)
         ArchTaskExecutor.getInstance().setDelegate(object : TaskExecutor() {
@@ -83,6 +92,7 @@ class IntegracionAlbumFotosTest {
         // Restaurar ejecutor y mocks
         ArchTaskExecutor.getInstance().setDelegate(null)
         unmockkStatic(Looper::class)
+        unmockkStatic(Log::class)
         Dispatchers.resetMain()
         clearAllMocks()
         val field = PeruvianServiceRepository::class.java.getDeclaredField("instance")
@@ -98,6 +108,18 @@ class IntegracionAlbumFotosTest {
             "file:///storage/emulated/0/DCIM/Camera/foto2.jpg"
         )
 
+        // Mock: Tour para que el ViewModel no falle
+        every { repository.obtenerTourPorId(tourId) } returns Tour(
+            tourId = tourId,
+            nombre = "Tour Test",
+            fecha = "2024-11-20",
+            hora = "08:00",
+            puntoEncuentro = "Plaza de Armas",
+            capacidad = 15,
+            participantesConfirmados = 5,
+            estado = "Completado"
+        )
+        
         // Mock: Insertar fotos
         var fotosGuardadas = mutableListOf<Foto>()
         every { anyConstructed<DatabaseHelper>().insertarFoto(any()) } answers {
@@ -230,6 +252,18 @@ class IntegracionAlbumFotosTest {
             "file:///storage/emulated/0/DCIM/Camera/foto$it.jpg" 
         }
 
+        // Mock: Tour para que el ViewModel no falle
+        every { repository.obtenerTourPorId(tourId) } returns Tour(
+            tourId = tourId,
+            nombre = "Tour Test",
+            fecha = "2024-11-20",
+            hora = "08:00",
+            puntoEncuentro = "Plaza de Armas",
+            capacidad = 15,
+            participantesConfirmados = 5,
+            estado = "Completado"
+        )
+        
         // Mock: Insertar fotos
         var fotosGuardadas = mutableListOf<Foto>()
         every { anyConstructed<DatabaseHelper>().insertarFoto(any()) } answers {

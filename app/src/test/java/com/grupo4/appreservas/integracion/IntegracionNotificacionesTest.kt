@@ -11,7 +11,9 @@ import com.grupo4.appreservas.viewmodel.NotificacionesViewModel
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -208,10 +210,12 @@ class IntegracionNotificacionesTest {
 
         // Act: Cargar recordatorios
         viewModel.cargarRecordatoriosUsuario(usuarioId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtuvieron las notificaciones
-        verify(exactly = 1) { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) }
+        // Nota: obtenerNotificacionesPorUsuario se llama múltiples veces desde actualizarListaCompleta
+        verify(atLeast = 1) { anyConstructed<DatabaseHelper>().obtenerNotificacionesPorUsuario(usuarioId) }
         verify { recordatoriosObserver.onChanged(any()) }
     }
 
@@ -233,7 +237,8 @@ class IntegracionNotificacionesTest {
 
         // Act: Detectar cambio
         viewModel.detectarCambio(usuarioId, "Cusco")
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se intentó detectar cambios
         // (el método obtenerCondicionesYDetectarCambio se ejecuta internamente)
@@ -280,7 +285,8 @@ class IntegracionNotificacionesTest {
 
         // Act: Generar ofertas
         viewModel.generarOferta(usuarioId)
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se obtuvieron tours con descuento
         val toursConDescuento = repository.obtenerToursConDescuento()
@@ -318,7 +324,8 @@ class IntegracionNotificacionesTest {
 
         // Act: Marcar como leída
         viewModel.marcarComoLeida("NOTIF001")
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
+        runBlocking { kotlinx.coroutines.delay(100) }
 
         // Assert: Verificar que se marcó como leída
         verify(exactly = 1) { anyConstructed<DatabaseHelper>().marcarNotificacionComoLeida("NOTIF001") }
